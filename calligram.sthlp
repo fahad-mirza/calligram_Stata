@@ -1,5 +1,5 @@
 {smcl}
-{* *! calligram v1.0.4 (Beta)  Fahad Mirza & Claude  11oct2026}{...}
+{* *! calligram v1.0.8 (Beta)  Fahad Mirza & Claude  11oct2026}{...}
 {viewerjumpto "Syntax" "calligram##syntax"}{...}
 {viewerjumpto "Description" "calligram##description"}{...}
 {viewerjumpto "Options" "calligram##options"}{...}
@@ -92,6 +92,7 @@
 {synopt:{cmdab:colorv:ar(}{it:varname}{cmd:)}}with {cmd:wordvar()}: a colour for each word{p_end}
 {synopt:{cmdab:colori:mage(}{it:filename}{cmd:)}}colour each word from a picture{p_end}
 {synopt:{cmdab:fon:t(}{it:name}{cmd:)}}font used to measure and draw words; default is {cmd:font(Arial)}{p_end}
+{synopt:{cmdab:scriptf:onts(}{it:script font} ...{cmd:)}}font for a writing system, e.g. {cmd:arabic "Noto Nastaliq Urdu"}{p_end}
 {synopt:{cmdab:onl:ine}}write words as text and load the font from Google Fonts (smaller file; needs internet){p_end}
 {synopt:{cmdab:rot:ate(}{it:mode}{cmd:)}}word rotation: {cmd:none}, {cmd:90}, or {cmd:random}; default is {cmd:rotate(none)}{p_end}
 
@@ -556,8 +557,8 @@ to green). Missing values are ignored.
 With categories (a string variable, a numeric variable with value labels, or any
 variable with the {cmd:categories} sub-option), each word takes the colour of the
 category it is most typical of: the one where it is used significantly more often
-than its overall rate predicts (a z-score of at least 1.96, 95% confidence; a
-category is judged only if the word's expected count there is at least 5). Words
+than its overall rate predicts (an exact binomial test at 95% confidence, split
+across the categories so that no small group claims a word by chance). Words
 used about evenly, or too rarely to tell, are grey ("no clear group"). Small
 categories therefore need strong evidence to claim a word. The hover card (and
 {cmd:saving()}, variable {cmd:colorlift}) says how many times as often the word is
@@ -576,6 +577,19 @@ of a picture (PNG, JPG, GIF, BMP) under its letters. The picture covers the whol
 canvas (what overflows is cropped); with {cmd:mask()} it is fitted the same way as
 the mask instead, so the same picture can be both. Only one of
 {cmd:colorby()}, {cmd:colorvar()} and {cmd:colorimage()} can be given.
+
+{phang}
+{cmdab:scriptf:onts(}{it:script font} [{it:script font} ...]{cmd:)} chooses the font for
+a writing system, used for every word written in it even when {cmd:font()} could draw
+it. Writing systems: {cmd:arabic} (Arabic, Persian, Urdu), {cmd:hebrew}, {cmd:devanagari},
+{cmd:bengali}, {cmd:tamil}, {cmd:telugu}, {cmd:gurmukhi}, {cmd:gujarati}, {cmd:thai},
+{cmd:chinese}, {cmd:japanese}, {cmd:korean}, {cmd:cyrillic}, {cmd:greek}, {cmd:latin},
+{cmd:ethiopic}. Put font names with spaces in quotes. For example,
+{cmd:scriptfonts(arabic "Noto Nastaliq Urdu")} draws Urdu in Nastaliq, its usual
+calligraphic style; that font is bundled with calligram. Without this option, words in
+a writing system the main font lacks are drawn with an installed font that covers it
+(on Windows, for example, Nirmala UI for Hindi, Bengali and Tamil, Segoe UI for Arabic
+script including Urdu, Microsoft YaHei for Chinese), and Stata says which.
 
 {phang}
 {cmdab:im:age(}{it:filename}[{cmd:, replace scale(}{it:#}{cmd:)}]{cmd:)} also saves

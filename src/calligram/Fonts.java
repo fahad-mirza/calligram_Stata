@@ -23,7 +23,12 @@ package calligram;
 
 import java.awt.Font;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.Map;
 
@@ -41,6 +46,7 @@ public final class Fonts {
         add("Lato", "Lato-Bold.ttf");
         add("Noto Sans", "NotoSans-Bold.ttf");
         add("Merriweather", "Merriweather-Bold.ttf");
+        add("Noto Nastaliq Urdu", "NotoNastaliqUrdu-Bold.ttf");   // Urdu in its usual Nastaliq style
     }
     private static void add(String family, String file) {
         BUNDLED.put(key(family), file);
@@ -94,4 +100,117 @@ public final class Fonts {
 
     /** Java's built-in composite font, which draws most scripts on most systems. */
     static Font fallback() { return new Font(Font.DIALOG, Font.BOLD, 1); }
+
+    /** Fonts known to cover each script, Windows first, then macOS, then Noto
+     *  (Linux and anyone who installed them). The first one that is installed and
+     *  can draw the whole word is used. */
+    private static final Map<Character.UnicodeScript, String[]> BY_SCRIPT = new HashMap<>();
+    static {
+        String[] cjkSC = {"Microsoft YaHei", "Microsoft YaHei UI", "SimHei", "DengXian", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC"};
+        String[] jp = {"Yu Gothic", "Yu Gothic UI", "Meiryo", "MS Gothic", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", "Noto Sans JP"};
+        String[] kr = {"Malgun Gothic", "Gulim", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Noto Sans KR"};
+        String[] arab = {"Segoe UI", "Arial", "Tahoma", "Geeza Pro", "Noto Sans Arabic", "Noto Naskh Arabic", "DejaVu Sans"};
+        String[] indic = {"Nirmala UI", "Nirmala Text", "Kohinoor Devanagari", "Kohinoor Bangla", "Tamil Sangam MN", "Mangal", "Vrinda", "Latha"};
+        BY_SCRIPT.put(Character.UnicodeScript.HAN, cjkSC);
+        BY_SCRIPT.put(Character.UnicodeScript.HIRAGANA, jp);
+        BY_SCRIPT.put(Character.UnicodeScript.KATAKANA, jp);
+        BY_SCRIPT.put(Character.UnicodeScript.HANGUL, kr);
+        BY_SCRIPT.put(Character.UnicodeScript.ARABIC, arab);
+        BY_SCRIPT.put(Character.UnicodeScript.HEBREW, new String[]{"Segoe UI", "Arial", "Tahoma", "Arial Hebrew", "Noto Sans Hebrew", "DejaVu Sans"});
+        BY_SCRIPT.put(Character.UnicodeScript.DEVANAGARI, concat(indic, "Noto Sans Devanagari"));
+        BY_SCRIPT.put(Character.UnicodeScript.BENGALI, concat(indic, "Noto Sans Bengali"));
+        BY_SCRIPT.put(Character.UnicodeScript.TAMIL, concat(indic, "Noto Sans Tamil"));
+        BY_SCRIPT.put(Character.UnicodeScript.TELUGU, concat(indic, "Noto Sans Telugu"));
+        BY_SCRIPT.put(Character.UnicodeScript.GURMUKHI, concat(indic, "Noto Sans Gurmukhi"));
+        BY_SCRIPT.put(Character.UnicodeScript.GUJARATI, concat(indic, "Noto Sans Gujarati"));
+        BY_SCRIPT.put(Character.UnicodeScript.THAI, new String[]{"Leelawadee UI", "Leelawadee", "Tahoma", "Thonburi", "Noto Sans Thai", "Noto Sans Thai Looped"});
+        BY_SCRIPT.put(Character.UnicodeScript.ETHIOPIC, new String[]{"Ebrima", "Nyala", "Kefa", "Noto Sans Ethiopic"});
+    }
+    private static String[] concat(String[] a, String b) { String[] r = Arrays.copyOf(a, a.length + 1); r[a.length] = b; return r; }
+    private static final String[] GENERAL = {"Segoe UI", "Arial Unicode MS", "Noto Sans", "DejaVu Sans"};
+    private static final Map<String, Font> CHOSEN = new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile Set<String> installed;
+    private static Set<String> installed() {
+        if (installed == null) {
+            Set<String> s = new HashSet<>();
+            for (String f : java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames(Locale.ROOT)) s.add(f.toLowerCase(Locale.ROOT));
+            installed = s;
+        }
+        return installed;
+    }
+    /** The main script of a word (its first character that is not shared punctuation or a mark). */
+    static Character.UnicodeScript scriptOf(String w) {
+        for (int i = 0; i < w.length(); ) {
+            int cp = w.codePointAt(i);
+            Character.UnicodeScript sc = Character.UnicodeScript.of(cp);
+            if (sc != Character.UnicodeScript.COMMON && sc != Character.UnicodeScript.INHERITED) return sc;
+            i += Character.charCount(cp);
+        }
+        return Character.UnicodeScript.COMMON;
+    }
+    /** Fonts chosen with scriptfonts(): writing system -> font, used for every word
+     *  of that writing system even when the main font could draw it. */
+    private static final Map<String, Font> OVERRIDE = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Reads "arabic=Noto Nastaliq Urdu;chinese=SimHei;" and returns notes on fonts not found. */
+    static List<String> setOverrides(String spec) {
+        OVERRIDE.clear();
+        List<String> notes = new ArrayList<>();
+        if (spec == null) return notes;
+        for (String part : spec.split(";")) {
+            int e = part.indexOf('=');
+            if (e <= 0) continue;
+            String script = part.substring(0, e).trim().toLowerCase(Locale.ROOT), name = part.substring(e + 1).trim();
+            Font f = bundled(name);
+            if (f == null && installed().contains(name.toLowerCase(Locale.ROOT))) f = new Font(name, Font.BOLD, 1);
+            if (f == null) { notes.add("scriptfonts(): font \"" + name + "\" is not installed; " + script + " uses the usual font."); continue; }
+            OVERRIDE.put(script, f);
+        }
+        return notes;
+    }
+    /** The writing-system name scriptfonts() uses for a word. */
+    static String scriptKey(String w) {
+        for (int i = 0; i < w.length(); ) {
+            int cp = w.codePointAt(i);
+            Character.UnicodeScript sc = Character.UnicodeScript.of(cp);
+            if (sc == Character.UnicodeScript.HIRAGANA || sc == Character.UnicodeScript.KATAKANA) return "japanese";
+            i += Character.charCount(cp);
+        }
+        Character.UnicodeScript sc = scriptOf(w);
+        switch (sc) {
+            case HAN: return "chinese";
+            case HANGUL: return "korean";
+            default: return sc.name().toLowerCase(Locale.ROOT);
+        }
+    }
+    /** The scriptfonts() font for this word, if one was chosen and can draw it. */
+    static Font overrideFor(String word) {
+        if (OVERRIDE.isEmpty()) return null;
+        Font f = OVERRIDE.get(scriptKey(word));
+        return f != null && f.canDisplayUpTo(word) == -1 ? f : null;
+    }
+    /** A font that can draw the whole word: one known to cover its script, else any
+     *  installed font that can, else Java's logical font. Chosen once per script. */
+    static Font fallbackFor(String word) {
+        Character.UnicodeScript sc = scriptOf(word);
+        String key = sc.name();
+        Font f = CHOSEN.get(key);
+        if (f != null && f.canDisplayUpTo(word) == -1) return f;
+        List<String> names = new ArrayList<>();
+        if (BY_SCRIPT.containsKey(sc)) names.addAll(Arrays.asList(BY_SCRIPT.get(sc)));
+        names.addAll(Arrays.asList(GENERAL));
+        Set<String> have = installed();
+        for (String n : names) {
+            if (!have.contains(n.toLowerCase(Locale.ROOT))) continue;
+            Font c = new Font(n, Font.BOLD, 1);
+            if (c.canDisplayUpTo(word) == -1) { CHOSEN.put(key, c); return c; }
+        }
+        // any installed font that can draw it (sans-serif names first)
+        List<String> all = new ArrayList<>(Arrays.asList(java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames(Locale.ROOT)));
+        all.sort((a, b) -> Boolean.compare(!a.toLowerCase(Locale.ROOT).contains("sans"), !b.toLowerCase(Locale.ROOT).contains("sans")));
+        for (String n : all) {
+            Font c = new Font(n, Font.BOLD, 1);
+            if (c.canDisplayUpTo(word) == -1) { CHOSEN.put(key, c); return c; }
+        }
+        return fallback();
+    }
 }

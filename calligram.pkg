@@ -16,7 +16,7 @@ d engine runs on Stata's own Java (nothing else to install). Stata 17+.
 d
 d Example data and the gallery do-file: net get calligram
 d
-d Version 1.0.4 (Beta). Formerly wordcloud2 3.5.
+d Version 1.0.8 (Beta). Formerly wordcloud2 3.5.
 d KW: word cloud
 d KW: wordcloud
 d KW: text analysis
@@ -30,6 +30,8 @@ f calligram_gallery.do
 f cg_cities.dta
 f cg_inaugural.dta
 f cg_alice.dta
+f cg_languages.dta
+f cg_urdu.dta
 f cg_countries.dta
 f cg_countries_shp.dta
 e

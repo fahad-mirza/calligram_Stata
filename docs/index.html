@@ -131,6 +131,19 @@ calligram, wordvar(brand) countvar(price) colorby(foreign) minfreq(1) ///
 <details><summary>Stata code</summary><pre><code>calligram, textvar(text) shape(heart) colorimage(stripes.png) ///
     width(1000) height(900) maxwords(250) rotate(random) bgcolor(white)</code></pre></details>
 <a class="open" href="examples/19_colorimage.html">Open the interactive page &rarr;</a></div></article>
+<article class="card"><a class="pic" href="examples/20_languages.html"><img src="thumbs/20_languages.jpg" alt="Every writing system" loading="lazy"></a>
+<div class="body"><h3>Every language and writing system</h3><p>20 languages, 12 writing systems: right-to-left Arabic and Hebrew, Hindi, Tamil, Thai, Chinese, Japanese, Korean. Click the key to hide a script.</p>
+<details><summary>Stata code</summary><pre><code>use cg_languages, clear
+calligram [fweight = responses], textvar(text) colorby(script) ///
+    minfreq(1) maxwords(250) scaling(0.35) font(Lato)</code></pre></details>
+<a class="open" href="examples/20_languages.html">Open the interactive page &rarr;</a></div></article>
+<article class="card"><a class="pic" href="examples/21_urdu.html"><img src="thumbs/21_urdu.jpg" alt="Urdu in Nastaliq" loading="lazy"></a>
+<div class="body"><h3>Urdu in Nastaliq</h3><p>Customer comments in Urdu, in Urdu's own calligraphic style, Nastaliq, with the bundled Noto Nastaliq Urdu font.</p>
+<details><summary>Stata code</summary><pre><code>use cg_urdu, clear
+calligram [fweight = responses], textvar(text) minfreq(1) ///
+    stopwords(اور تھی تھا ہے لیکن مگر بہت ہوئی) ///
+    scriptfonts(arabic &quot;Noto Nastaliq Urdu&quot;) shape(circle)</code></pre></details>
+<a class="open" href="examples/21_urdu.html">Open the interactive page &rarr;</a></div></article>
 </div></main>
 <footer>calligram by Fahad Mirza &middot; example data: Natural Earth, US inaugural addresses, Project Gutenberg, sysuse auto &middot; <a href="https://github.com/fahad-mirza/calligram_Stata">source and documentation</a></footer>
 </body></html>

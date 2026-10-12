@@ -4,7 +4,7 @@
 <p align="center">
 <a href="https://fahad-mirza.github.io/calligram_Stata/"><img alt="Live gallery" src="https://img.shields.io/badge/live%20gallery-open-4e79a7"></a>
 <img alt="Stata 17+" src="https://img.shields.io/badge/Stata-17%2B-1a5f91">
-<img alt="Version 1.0.4" src="https://img.shields.io/badge/version-1.0.4%20beta-f28e2b">
+<img alt="Version 1.0.4" src="https://img.shields.io/badge/version-1.0.8%20beta-f28e2b">
 <img alt="Nothing else to install" src="https://img.shields.io/badge/dependencies-none-59a14f">
 </p>
 
@@ -36,7 +36,7 @@ Every picture in this README links to the real page Stata wrote. Open one and tr
 - [Why calligram](#why-calligram)
 - [Install](#install)
 - [Quick start](#quick-start)
-- [Gallery](#gallery): [basics](#the-basics) · [shapes](#shapes) · [maps](#maps) · [text](#working-with-text) · [colour with meaning](#colour-with-meaning) · [results and speed](#results-and-speed)
+- [Gallery](#gallery): [basics](#the-basics) · [shapes](#shapes) · [maps](#maps) · [text](#working-with-text) · [every language](#every-language-and-writing-system) · [Urdu in Nastaliq](#urdu-in-nastaliq) · [colour with meaning](#colour-with-meaning) · [results and speed](#results-and-speed)
 - [The interactive page](#the-interactive-page)
 - [Options](#options)
 - [Stored results](#stored-results)
@@ -52,6 +52,7 @@ Every picture in this README links to the real page Stata wrote. Open one and tr
 - **Nothing to install but the package.** A Java engine bundled in the package runs on Stata's own Java. There's no Python, R, or internet connection needed.
 - **Tight, clean layouts.** Words are packed by the exact pixels of their letters, not their bounding boxes, so the cloud is dense and no two words ever touch.
 - **Any shape.** Nine built-in shapes, any black-on-white picture, any shape from coordinates, or a map from a Stata shapefile with each word inside its own area.
+- **Every language and writing system.** Urdu and Hindi, Arabic, Persian and Hebrew (right to left, letters joined), Bengali, Tamil and Thai (vowel signs in place), Chinese, Japanese and Korean. Urdu can be drawn in **Nastaliq**, its own calligraphic style, with a bundled font. [See below](#every-language-and-writing-system).
 - **Text handling that suits survey data.** Stopwords in English, French, Spanish and Portuguese; plurals merged with their singulars; hyphenated words kept whole; contractions handled; two-word phrases detected statistically; weights; `if`/`in`; `by()` groups; and words you've already counted.
 - **Colour that means something.** Colour words by a numeric variable (average rating, sentiment, year), by the group each word is typical of, by a colour you choose for each word, or from a picture.
 - **Pages that work anywhere.** One self-contained HTML file that works offline, with search, filtering, a top-words list, hover cards, zoom and pan, light and dark themes, palettes, and PNG/SVG/JPG saving. The same picture can also be written straight from Stata with `image()`.
@@ -87,7 +88,7 @@ calligram, textvar(text) phrases shape(heart) title("Inaugural addresses") ///
 
 ## Gallery
 
-All examples come from [`calligram_gallery.do`](calligram_gallery.do), which builds each page and picture. Click a picture to open its interactive page.
+All examples come from [`calligram_gallery.do`](calligram_gallery.do), which builds each page and picture. Click a picture to open its interactive page. In the gallery, religious words (such as *god*, *faith* or *blessings*, frequent in the inaugural addresses) are left out with `stopwords()`; the commands below omit that list for brevity.
 
 ### The basics
 
@@ -263,6 +264,40 @@ calligram [aweight = weight], textvar(response) minfreq(1)
 ```
 <a href="https://fahad-mirza.github.io/calligram_Stata/examples/12_weights.html"><img src="gallery/12_weights.png" alt="Weighted cloud" width="100%"></a>
 
+### Every language and writing system
+
+Twenty languages in twelve writing systems, coloured by writing system: Latin, Cyrillic, Greek, Arabic script (Arabic, Persian, Urdu), Hebrew, Devanagari (Hindi), Bengali, Tamil, Thai, Chinese characters, Japanese and Hangul (Korean). From South Asia alone: Urdu, Hindi, Bengali and Tamil. Click a writing system in the key on the [live page](https://fahad-mirza.github.io/calligram_Stata/examples/20_languages.html) to hide or show it.
+
+```stata
+use cg_languages, clear          // short customer comments in 20 languages
+calligram [fweight = responses], textvar(text) colorby(script) minfreq(1) ///
+    maxwords(250) scaling(0.35) font(Lato) title("Customer comments in 20 languages")
+```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/20_languages.html"><img src="gallery/20_languages.png" alt="Customer comments in 20 languages, coloured by writing system" width="100%"></a>
+
+What happens behind the scenes:
+
+- **Fonts.** When the chosen font lacks a script, calligram picks one that covers it: on Windows Segoe UI (Urdu, Arabic, Persian, Hebrew, Greek, Cyrillic), Nirmala UI (Hindi, Bengali, Tamil), Microsoft YaHei (Chinese), Yu Gothic (Japanese), Malgun Gothic (Korean) and Leelawadee UI (Thai); the macOS and Noto equivalents elsewhere. The Results window says which it used. To choose a font yourself for any writing system, use `scriptfonts()`, as in the Urdu example below.
+- **The page needs none of these fonts.** Each word is stored as its letter outlines, so it looks the same on every computer and phone.
+- **Shaping and direction.** Urdu, Arabic and Persian letters join and run right to left, Hindi conjuncts form, and the marks of Bengali, Tamil and Thai stay in place, just as in a word processor.
+- **Words stay whole.** Vowel signs, the virama and other marks belong to their word, never split it. For `minlength()`, a Chinese, Japanese or Korean character counts as two letters, since one or two characters often make a whole word.
+- **One thing to do yourself:** Chinese, Japanese and Thai are written without spaces between words. Split the text into words first (with a segmenter such as jieba for Chinese, or a tokenizer such as MeCab for Japanese), as in the example data. Korean, which uses spaces, needs nothing.
+- **Stopwords** are built in for English, French, Spanish and Portuguese (`language()`). For other languages, add your own with `stopwords()`.
+
+### Urdu in Nastaliq
+
+Urdu is usually written in **Nastaliq**, a flowing calligraphic style in which letters join on a sloping baseline and each word cascades diagonally. Most fonts draw Urdu in Naskh, the upright style used for Arabic: legible, but not how Urdu readers expect to see it. calligram bundles the free **Noto Nastaliq Urdu** font, and `scriptfonts()` chooses it for Arabic script. Here are short customer comments in Urdu:
+
+```stata
+use cg_urdu, clear               // customer comments in Urdu, with how many wrote each
+calligram [fweight = responses], textvar(text) minfreq(1)          ///
+    stopwords(اور تھی تھا ہے لیکن مگر بہت ہوئی ضرور کروں)            ///
+    scriptfonts(arabic "Noto Nastaliq Urdu") shape(circle) bgcolor(#0b3d2e)
+```
+<p align="center"><a href="https://fahad-mirza.github.io/calligram_Stata/examples/21_urdu.html"><img src="gallery/21_urdu.png" alt="Customer comments in Urdu, in Nastaliq" width="60%"></a></p>
+
+Urdu has no built-in stopword list, so its common short words (اور *and*, تھا *was*, لیکن *but*, ...) are given with `stopwords()`; the same works for any language. `scriptfonts()` works for every writing system, for example `scriptfonts(chinese SimHei japanese "Yu Gothic")`, and the font is used for every word in that writing system, even when the main font could draw it.
+
 ### Colour with meaning
 
 By default colours just tell words apart. Three options make them carry information. A key appears under the cloud and in pictures, and each word's hover card gives its value.
@@ -423,6 +458,7 @@ Full details: `help calligram`.
 | `colorimage(file)` | colours from a picture | |
 | `bgcolor(color)` | background | `#16213e` |
 | `font(name)` | font for measuring and drawing | Arial |
+| `scriptfonts(script font ...)` | the font for a writing system, e.g. `arabic "Noto Nastaliq Urdu"` (bundled) | automatic |
 | `title("text"[, color() size()])` | page title | "Word Cloud" |
 
 Colours can be hex (`#4e79a7`), `rgb(78,121,167)` or CSS names (`navy`, `tomato`).
@@ -478,11 +514,13 @@ Copied by `net get calligram`:
 |---|---|---|
 | `cg_inaugural.dta` | US presidential inaugural addresses 1789-2025, one row per paragraph | public domain |
 | `cg_alice.dta` | *Alice's Adventures in Wonderland*, one row per paragraph | Project Gutenberg, public domain |
+| `cg_languages.dta` | short customer comments in 20 languages and 12 writing systems, with how many customers wrote each | written for calligram |
+| `cg_urdu.dta` | short customer comments in Urdu, with how many customers wrote each | written for calligram |
 | `cg_cities.dta` | 1,207 cities with latitude, longitude, population, country and continent | Natural Earth, public domain |
 | `cg_countries.dta`, `cg_countries_shp.dta` | 241 countries in Stata shapefile format | Natural Earth, public domain |
 
 ## Credits and licence
 
-Author: **Fahad Mirza**. Bundled fonts (Arimo, Tinos, Roboto, Open Sans, Lato, Noto Sans, Merriweather) are used under their open licences, included in the JAR. Map data © Natural Earth (public domain).
+Author: **Fahad Mirza**. Bundled fonts (Arimo, Tinos, Roboto, Open Sans, Lato, Noto Sans, Merriweather, Noto Nastaliq Urdu) are used under their open licences, included in the JAR. Map data © Natural Earth (public domain).
 
 Please report bugs and ideas in [Issues](https://github.com/fahad-mirza/calligram_Stata/issues). See [LICENSE](LICENSE) for the licence.

@@ -1,4 +1,4 @@
-* calligram_gallery.do  —  the example gallery for calligram (v1.0.4)
+* calligram_gallery.do  —  the example gallery for calligram (v1.0.8)
 *
 * Builds every example shown in the README: for each one an interactive HTML
 * page and a PNG image (written by calligram itself, with the image() option),
@@ -7,7 +7,7 @@
 * Before running, get the example data into the current folder:
 *     net get calligram, from(<where you installed calligram from>)
 * which copies cg_cities.dta, cg_countries.dta, cg_countries_shp.dta,
-* cg_inaugural.dta and cg_alice.dta.
+* cg_inaugural.dta, cg_alice.dta, cg_languages.dta and cg_urdu.dta.
 *
 * Data sources (all public domain):
 *   - cities and country boundaries: Natural Earth (naturalearthdata.com);
@@ -21,7 +21,12 @@ clear all
 set more off
 capture mkdir gallery
 
-foreach f in cg_cities.dta cg_countries.dta cg_countries_shp.dta cg_inaugural.dta cg_alice.dta {
+* Religious words are left out of every text example (the inaugural addresses
+* use words such as these often); stopwords() removes them, and with them
+* phrases such as "god bless".
+local noreligion "god gods almighty lord providence heaven heavenly divine prayer prayers pray bless blessed blessing blessings creator sacred holy church churches religion religious faith worship scripture bible christ christian christianity amen soul souls angel angels"
+
+foreach f in cg_cities.dta cg_countries.dta cg_countries_shp.dta cg_inaugural.dta cg_alice.dta cg_languages.dta cg_urdu.dta {
     capture confirm file `f'
     if _rc {
         di as error "`f' not found in the current folder: run  net get calligram, from(...)  first"
@@ -70,10 +75,10 @@ calligram, textvar(response) minfreq(1) rotate(random) font(Roboto) ///
 
 * 4. Named shapes: a heart, and a star with its outline --------------------
 use cg_inaugural, clear
-calligram, textvar(text) shape(heart) width(1000) height(900)     ///
+calligram, textvar(text) stopwords(`noreligion') shape(heart) width(1000) height(900)     ///
     maxwords(250) rotate(random)                                    ///
     savefile(gallery/04_heart.html) image(gallery/04_heart.png, replace scale(1))
-calligram, textvar(text) shape(star) outline width(1000) height(1000) ///
+calligram, textvar(text) stopwords(`noreligion') shape(star) outline width(1000) height(1000) ///
     maxwords(250) font(Lato)                                        ///
     savefile(gallery/04_star.html) image(gallery/04_star.png, replace scale(1))
 
@@ -101,7 +106,7 @@ gen int shape_order = _n
 keep _ID _X _Y shape_order
 save gallery/cg_blob_shp, replace
 use cg_inaugural, clear
-calligram, textvar(text) shapes(gallery/cg_blob_shp.dta) projection(none) outline ///
+calligram, textvar(text) stopwords(`noreligion') shapes(gallery/cg_blob_shp.dta) projection(none) outline ///
     width(1000) height(1000) maxwords(300) phrases rotate(90) font(Roboto)          ///
     savefile(gallery/05_blob.html) image(gallery/05_blob.png, replace scale(1))
 
@@ -121,7 +126,7 @@ twoway (pcspike _Y _X zero zero, lcolor(black) lwidth(medthick))     ///
 graph export gallery/cg_mask_blob.png, name(blob) width(1000) replace
 graph drop blob
 use cg_inaugural, clear
-calligram, textvar(text) mask(gallery/cg_mask_blob.png) outline       ///
+calligram, textvar(text) stopwords(`noreligion') mask(gallery/cg_mask_blob.png) outline       ///
     width(1000) height(1000) maxwords(300) rotate(random) font(Lato)    ///
     savefile(gallery/05b_blob_mask.html) image(gallery/05b_blob_mask.png, replace scale(1))
 
@@ -161,19 +166,19 @@ calligram if continent == "Africa", wordvar(city) countvar(population)     ///
 *    phrases joins pairs such as "united states" and "fellow citizens";
 *    the phrases found are listed in the Results window.
 use cg_inaugural, clear
-calligram, textvar(text) phrases maxwords(200) font(Merriweather)   ///
+calligram, textvar(text) stopwords(`noreligion') phrases maxwords(200) font(Merriweather)   ///
     title("US inaugural addresses, 1789-2025")                       ///
     savefile(gallery/08_inaugural.html) image(gallery/08_inaugural.png, replace scale(1))
 
 * 9. One cloud per group: the addresses by century (tabs in the page, ----------
 *    and one image per century: 09_by_century_18th_century.png etc.)
-calligram, textvar(text) by(century) phrases maxwords(120) font(Merriweather) ///
+calligram, textvar(text) stopwords(`noreligion') by(century) phrases maxwords(120) font(Merriweather) ///
     savefile(gallery/09_by_century.html) image(gallery/09_by_century.png, replace scale(1))
 
 * 10. A book in a circle: Alice's Adventures in Wonderland --------------------
 *     phrases finds "mock turtle", "march hare", "white rabbit", "cheshire cat"
 use cg_alice, clear
-calligram, textvar(text) phrases shape(circle) width(1000) height(1000) ///
+calligram, textvar(text) stopwords(`noreligion') phrases shape(circle) width(1000) height(1000) ///
     maxwords(250) minfreq(3) rotate(random) font(Merriweather)            ///
     bgcolor(#fdfaf3) gradient(#7b2d26 #33658a)                            ///
     savefile(gallery/10_alice.html) image(gallery/10_alice.png, replace scale(1))
@@ -195,7 +200,7 @@ calligram [aweight = weight], textvar(response) minfreq(1)            ///
 
 * 13. Keep the results as data: the most frequent words as a table -----------
 use cg_inaugural, clear
-calligram, textvar(text) phrases maxwords(100)                        ///
+calligram, textvar(text) stopwords(`noreligion') phrases maxwords(100)                        ///
     saving(gallery/13_words, replace) savefile(gallery/13_saving.html)
 preserve
     use gallery/13_words, clear
@@ -208,11 +213,11 @@ use cg_inaugural, clear
 quietly expand 50
 timer clear 1
 timer on 1
-calligram, textvar(text) savefile(gallery/14_large.html)
+calligram, textvar(text) stopwords(`noreligion') savefile(gallery/14_large.html)
 timer off 1
 timer clear 2
 timer on 2
-calligram, textvar(text) phrases savefile(gallery/14_large_phrases.html)
+calligram, textvar(text) stopwords(`noreligion') phrases savefile(gallery/14_large_phrases.html)
 timer off 2
 quietly timer list
 di as result "  words only:   " %6.2f r(t1) " seconds in total"
@@ -220,19 +225,19 @@ di as result "  with phrases: " %6.2f r(t2) " seconds in total"
 
 * 15. Online pages: smaller files, text instead of letter outlines -----------
 use cg_inaugural, clear
-calligram, textvar(text) online font(Lato) maxwords(200)              ///
+calligram, textvar(text) stopwords(`noreligion') online font(Lato) maxwords(200)              ///
     savefile(gallery/15_online.html)
 
 * 16. Colour with meaning: each word by the average year of the addresses it
 *     appears in (old-fashioned words orange, modern words purple); key below
 use cg_inaugural, clear
-calligram, textvar(text) colorby(year) gradient(#d95f02 #5e3c99) phrases   ///
+calligram, textvar(text) stopwords(`noreligion') colorby(year) gradient(#d95f02 #5e3c99) phrases   ///
     maxwords(200) font(Merriweather) title("Inaugural addresses: words by average year") ///
     savefile(gallery/16_colorby_year.html) image(gallery/16_colorby_year.png, replace scale(1))
 
 * 17. ... or by the century each word is most typical of (used significantly
 *     more there; grey: no clear group)
-calligram, textvar(text) colorby(century) phrases maxwords(200) font(Merriweather) ///
+calligram, textvar(text) stopwords(`noreligion') colorby(century) phrases maxwords(200) font(Merriweather) ///
     title("Inaugural addresses: words by century") ///
     savefile(gallery/17_colorby_century.html) image(gallery/17_colorby_century.png, replace scale(1))
 
@@ -260,8 +265,30 @@ twoway (bar y x if x == 1, color("200 30 45") fintensity(100) barwidth(1))  ///
 graph export gallery/cg_stripes.png, name(stripes) width(1000) replace
 graph drop stripes
 use cg_inaugural, clear
-calligram, textvar(text) shape(heart) colorimage(gallery/cg_stripes.png)  ///
+calligram, textvar(text) stopwords(`noreligion') shape(heart) colorimage(gallery/cg_stripes.png)  ///
     width(1000) height(900) maxwords(250) rotate(random) bgcolor(white)    ///
     savefile(gallery/19_colorimage.html) image(gallery/19_colorimage.png, replace scale(1))
+
+* 20. Every writing system: short customer comments in 20 languages, coloured
+*     by writing system (Latin, Cyrillic, Greek, Arabic, Hebrew, Devanagari,
+*     Bengali, Tamil, Thai, Chinese characters, Japanese, Hangul). Words are
+*     drawn with fonts that cover each script and stored as letter outlines, so
+*     the page shows them correctly on any computer. Chinese, Japanese and Thai
+*     are written without spaces: split them into words first (here they are).
+use cg_languages, clear
+calligram [fweight = responses], textvar(text) stopwords(`noreligion') colorby(script) minfreq(1)        ///
+    maxwords(250) scaling(0.35) font(Lato) title("Customer comments in 20 languages") ///
+    savefile(gallery/20_languages.html) image(gallery/20_languages.png, replace scale(1))
+
+* 21. Urdu in its own calligraphic style, Nastaliq: short customer comments,
+*     drawn with the bundled Noto Nastaliq Urdu font, chosen with scriptfonts().
+*     Urdu has no built-in stopword list, so its common short words are given
+*     with stopwords().
+use cg_urdu, clear
+calligram [fweight = responses], textvar(text) minfreq(1)                       ///
+    stopwords(`noreligion' اور تھی تھا ہے لیکن مگر بہت ہوئی ضرور کروں)          ///
+    scriptfonts(arabic "Noto Nastaliq Urdu") shape(circle) width(1000) height(1000) ///
+    bgcolor(#0b3d2e) title("Customer comments in Urdu, in Nastaliq")              ///
+    savefile(gallery/21_urdu.html) image(gallery/21_urdu.png, replace scale(1))
 
 di as result _n "Gallery written to the folder gallery: open any .html file in a browser."

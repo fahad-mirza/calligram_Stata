@@ -1,4 +1,4 @@
-* calligram_example.do  —  examples and self-checks for calligram v1.0.4
+* calligram_example.do  —  examples and self-checks for calligram v1.0.8
 * Run the whole file. Every check uses -assert-, so it stops at the first
 * problem; reaching the final message means everything passed.
 * HTML files are written to the current working directory.
@@ -445,6 +445,7 @@ if `hasshp' & _rc == 0 {
     preserve
         * a map of South America, cut from the world shapefile
         use cg_countries, clear
+        quietly levelsof _ID if name == "Paraguay", local(pid)
         keep if continent == "South America"
         keep _ID
         merge 1:m _ID using cg_countries_shp, keep(match) nogenerate
@@ -462,6 +463,15 @@ if `hasshp' & _rc == 0 {
         * every placed city got a country (its area _ID)
         quietly count if placed == 1 & region == ""
         assert r(N) == 0
+        * cities on a border land in their own country: Asunción and Ciudad del Este
+        * (on Paraguay's borders with Argentina and Brazil) are in Paraguay
+        * (pid: Paraguay's area number, taken when the map was cut, above)
+        foreach c in "Asunción" "Ciudad del Este" {
+            capture confirm string variable region
+            if _rc == 0 quietly count if word == "`c'" & placed == 1 & region == "`pid'"
+            else quietly count if word == "`c'" & placed == 1 & region == `pid'
+            assert r(N) == 1
+        }
         * near: Australia's cities as close as possible to where they are
         use cg_countries, clear
         keep if name == "Australia"
@@ -583,6 +593,49 @@ if _rc == 0 {
         assert `: word count `r(levels)'' >= 4
     restore
 }
+
+* every writing system: words stay whole (Indian vowel signs and the virama,
+* Thai and Arabic marks are part of the word), two-character Chinese words are
+* kept, and colorby(script) gives every word its writing system
+capture confirm file cg_languages.dta
+if _rc == 0 {
+    preserve
+        use cg_languages, clear
+        calligram [fweight = responses], textvar(text) colorby(script) minfreq(1) maxwords(300) ///
+            saving(cg_lang, replace) savefile(cg_languages.html)
+        use cg_lang, clear
+        foreach w in "उत्कृष्ट" "गुणवत्ता" "চমৎকার" "சிறந்த" "ยอดเยี่ยม" "ممتازة" "بہترین" "کیفیت" "שירות" "服务" "很好" "素晴らしい" "훌륭한" "отличный" {
+            quietly count if word == "`w'" & placed == 1
+            assert r(N) == 1
+        }
+        quietly count if placed == 1 & colorgroup == ""
+        assert r(N) == 0
+    restore
+}
+
+* Urdu in Nastaliq: scriptfonts() chooses the font for a writing system, and
+* stopwords() gives Urdu's common short words (there is no built-in Urdu list)
+capture confirm file cg_urdu.dta
+if _rc == 0 {
+    preserve
+        use cg_urdu, clear
+        calligram [fweight = responses], textvar(text) minfreq(1) stopwords(اور تھی تھا لیکن مگر بہت ہوئی) ///
+            scriptfonts(arabic "Noto Nastaliq Urdu") shape(circle) width(1000) height(1000)          ///
+            saving(cg_urdu_words, replace) savefile(cg_urdu.html)
+        assert r(N_placed) > 30
+        use cg_urdu_words, clear
+        foreach w in "سروس" "معیار" "ڈلیوری" "قیمت" "بہترین" {
+            quietly count if word == "`w'" & placed == 1
+            assert r(N) == 1
+        }
+        quietly count if word == "اور"
+        assert r(N) == 0
+    restore
+}
+capture calligram, textvar(response) scriptfonts(klingon Arial)
+assert _rc == 198
+capture calligram, textvar(response) scriptfonts(arabic)
+assert _rc == 198
 
 * errors for the new options
 capture calligram, textvar(response) wordvar(response)

@@ -211,7 +211,62 @@ public final class Shapes {
 
     /** label of the area containing canvas point (x, y), looking up to r pixels
      *  around it (points on a coast can fall just outside a simplified border) */
+    // ── exact point-in-area test on the border lines (not the pixels) ─────────
+    private double[][] vRings;      // each ring's points on the canvas: x0,y0,x1,y1,...
+    private int[] vLabel;           // the area label of each ring
+    private double[][] vBox;        // each ring's bounding box: minx, miny, maxx, maxy
+    private synchronized void buildVector() {
+        if (vRings != null) return;
+        List<double[]> rs = new ArrayList<>(); List<Integer> ls = new ArrayList<>(); List<double[]> bs = new ArrayList<>();
+        for (Map.Entry<Double, List<double[]>> e : areas.entrySet()) {
+            int lab = labelOf.get(e.getKey());
+            for (double[] r : e.getValue()) {
+                double[] c = new double[r.length];
+                double x0 = Double.MAX_VALUE, y0 = Double.MAX_VALUE, x1 = -Double.MAX_VALUE, y1 = -Double.MAX_VALUE;
+                for (int k = 0; k < r.length; k += 2) {
+                    double[] q = canvas(r[k], r[k + 1]);
+                    c[k] = q[0]; c[k + 1] = q[1];
+                    x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]);
+                }
+                rs.add(c); ls.add(lab); bs.add(new double[]{x0, y0, x1, y1});
+            }
+        }
+        vRings = rs.toArray(new double[0][]); vBox = bs.toArray(new double[0][]);
+        vLabel = new int[ls.size()];
+        for (int i = 0; i < vLabel.length; i++) vLabel[i] = ls.get(i);
+    }
+    private static boolean inRing(double[] c, double x, double y) {
+        boolean in = false;
+        int n = c.length / 2;
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            double xi = c[2 * i], yi = c[2 * i + 1], xj = c[2 * j], yj = c[2 * j + 1];
+            if ((yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) in = !in;
+        }
+        return in;
+    }
+    /** The area whose borders contain the point (even-odd over all of an area's
+     *  rings, so holes and islands count right), or 0. */
+    public int vectorLabelAt(double x, double y) {
+        buildVector();
+        Map<Integer, Boolean> parity = new HashMap<>();
+        for (int i = 0; i < vRings.length; i++) {
+            double[] b = vBox[i];
+            if (x < b[0] || x > b[2] || y < b[1] || y > b[3]) continue;
+            if (inRing(vRings[i], x, y)) parity.merge(vLabel[i], true, (p, q) -> !p);
+        }
+        for (Map.Entry<Integer, Boolean> e : parity.entrySet()) if (e.getValue()) return e.getKey();
+        return 0;
+    }
+    /** The area containing a point: by its exact borders first; for a point just
+     *  outside every area (a coastal city on a simplified coastline), the nearest
+     *  area on the pixel map within r pixels. */
     public int labelAt(double x, double y, int r) {
+        int v = vectorLabelAt(x, y);
+        if (v > 0) return v;
+        return rasterLabelAt(x, y, r);
+    }
+    /** The pixel-map lookup alone (the area drawn at the point's pixel, else the nearest within r). */
+    public int rasterLabelAt(double x, double y, int r) {
         int cx = (int) Math.round(x), cy = (int) Math.round(y);
         if (cx >= 0 && cy >= 0 && cx < W && cy < H && label[cy * W + cx] > 0) return label[cy * W + cx];
         int best = 0;

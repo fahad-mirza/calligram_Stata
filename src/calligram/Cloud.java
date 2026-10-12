@@ -134,6 +134,9 @@ public class Cloud {
                     case "colormode": colorMode = v.equals("numeric") ? 1 : v.equals("category") ? 2 : v.equals("color") ? 3 : 0; break;
                     case "colork":    colorK = Integer.parseInt(v); break;
                     case "colorpos":  colorPos = Integer.parseInt(v); break;
+                    case "scriptfonts":
+                        for (String note : Fonts.setOverrides(v)) SFIToolkit.displayln("{txt}calligram: " + note);
+                        break;
                     case "colorimage": colorImage = v; if (!v.isEmpty()) forcePaths = true; break;
                     case "regions":   regions = v.equals("1"); p.regions = regions; if (regions && regionMode.isEmpty()) regionMode = "color"; break;
                     case "regionmode": regionMode = v; regions = !v.isEmpty(); p.regions = regions; break;
@@ -300,12 +303,16 @@ public class Cloud {
             }
         }
         int nfb = 0;
+        java.util.Map<String, Integer> fams = new java.util.TreeMap<>();
         for (int g : todo) for (int i = 0; i < tops.get(g).size(); i++) {
-            if (res[g].placed[i] && engine.usesFallback(tops.get(g).get(i).word)) nfb++;
+            String w = tops.get(g).get(i).word;
+            if (res[g].placed[i] && engine.usesFallback(w)) { nfb++; fams.merge(engine.fallbackFamily(w), 1, Integer::sum); }
         }
         if (nfb > 0) {
+            StringBuilder fs = new StringBuilder();
+            for (java.util.Map.Entry<String, Integer> e : fams.entrySet()) fs.append(fs.length() > 0 ? ", " : "").append(e.getKey()).append(" (").append(e.getValue()).append(')');
             SFIToolkit.displayln("{txt}calligram: " + nfb + " word" + (nfb == 1 ? "" : "s")
-                + " use characters " + engine.family() + " does not have; drawn with the system font instead.");
+                + " drawn with fonts other than " + engine.family() + " (for scripts it lacks, or chosen with scriptfonts()): " + fs + ".");
         }
 
         // ── results into a new frame ──────────────────────────────────────────

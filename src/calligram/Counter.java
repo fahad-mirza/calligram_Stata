@@ -170,6 +170,45 @@ public final class Counter {
         return t == Character.DECIMAL_DIGIT_NUMBER || t == Character.LETTER_NUMBER || t == Character.OTHER_NUMBER;
     }
     private static boolean isWordChar(int cp) { return cp >= 0 && (Character.isLetter(cp) || isNumber(cp)); }
+    /** Marks that belong to the letter before them: vowel signs and the virama in
+     *  Indian scripts, Thai vowels and tone marks, Arabic and Hebrew vowel marks,
+     *  combining accents; plus the zero-width joiner and non-joiner (Persian, Urdu,
+     *  Indian scripts). Inside a word they are part of it, never a break. */
+    private static boolean isMark(int cp) {
+        int t = Character.getType(cp);
+        return t == Character.NON_SPACING_MARK || t == Character.COMBINING_SPACING_MARK
+            || t == Character.ENCLOSING_MARK || cp == 0x200C || cp == 0x200D;
+    }
+    /** P(X >= x) for X ~ Binomial(n, p), summed in log space from x upward (the
+     *  terms fall off fast above the mean); 1 when x is not above the mean. */
+    static double binomUpper(long x, long n, double p) {
+        if (x <= 0) return 1;
+        if (x > n) return 0;
+        if (x <= n * p) return 1;
+        double lp = Math.log(p), lq = Math.log1p(-p), lgn = logGamma(n + 1.0), sum = 0;
+        for (long k = x; k <= n; k++) {
+            double t = Math.exp(lgn - logGamma(k + 1.0) - logGamma(n - k + 1.0) + k * lp + (n - k) * lq);
+            sum += t;
+            if (t < sum * 1e-15 || (k - x > 50 && t < 1e-300)) break;
+        }
+        return Math.min(1, sum);
+    }
+    /** log Gamma(x), Lanczos approximation (|error| < 1e-14 for x > 0) */
+    static double logGamma(double x) {
+        double[] c = {0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+            -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7};
+        x -= 1;
+        double a = c[0], t = x + 7.5;
+        for (int i = 1; i < 9; i++) a += c[i] / (x + i);
+        return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+    }
+    /** Chinese, Japanese and Korean characters often make a whole word on their
+     *  own, so for minlength() each counts as two letters. */
+    private static int letterWeight(int cp) {
+        Character.UnicodeScript sc = Character.UnicodeScript.of(cp);
+        return sc == Character.UnicodeScript.HAN || sc == Character.UnicodeScript.HIRAGANA
+            || sc == Character.UnicodeScript.KATAKANA || sc == Character.UnicodeScript.HANGUL ? 2 : 1;
+    }
     private static boolean isApostrophe(int cp) { return cp == '\'' || cp == 0x2018 || cp == 0x2019; }
     private static boolean isHyphen(int cp) { return cp == '-' || cp == 0x2010 || cp == 0x2011; }
     private static boolean isSpace(int cp) { return cp == ' ' || cp == '\t' || cp == '\n' || cp == '\r'; }
@@ -198,14 +237,14 @@ public final class Counter {
             int cp = s.codePointAt(i);
             int step = Character.charCount(cp);
             int next = i + step < len ? s.codePointAt(i + step) : -1;
-            if (isWordChar(cp)) {
+            if (isWordChar(cp) || (tok.length() > 0 && isMark(cp))) {
                 tok.appendCodePoint(cp); prev = cp;
             } else if (isApostrophe(cp)) {
                 if (o.elision && isWordChar(next) && ELIDE.contains(tok.toString())) {
                     emit(out, tok.toString()); tok.setLength(0); prev = -1;   // French: l'entreprise
                 }
                 // otherwise deleted: "don't" -> "dont"
-            } else if (o.keepHyphens && isHyphen(cp) && tok.length() > 0 && isWordChar(prev) && isWordChar(next)) {
+            } else if (o.keepHyphens && isHyphen(cp) && tok.length() > 0 && (isWordChar(prev) || isMark(prev)) && isWordChar(next)) {
                 tok.append('-'); prev = '-';
             } else {
                 if (tok.length() > 0) { emit(out, tok.toString()); tok.setLength(0); prev = -1; }
@@ -218,11 +257,12 @@ public final class Counter {
     }
 
     private void emit(List<String> out, String w) {
-        int cps = w.codePointCount(0, w.length());
+        int cps = 0;                                     // length for minlength(): CJK counts double
         boolean digits = true;
         for (int i = 0; i < w.length(); ) {
             int cp = w.codePointAt(i);
-            if (!isNumber(cp) && !isHyphen(cp)) { digits = false; break; }
+            if (!isNumber(cp) && !isHyphen(cp)) digits = false;
+            if (!isMark(cp)) cps += letterWeight(cp);
             i += Character.charCount(cp);
         }
         String key = o.clean ? w : w.toLowerCase(Locale.ROOT);
@@ -619,32 +659,36 @@ public final class Counter {
         }
         /** Colour information of one word in group g. Categories: the category in
          *  which the word is used significantly more often than its overall rate
-         *  predicts (largest z-score, at least 1.96, i.e. 95% confidence, judged
-         *  only where the expected count is at least 5); a word
-         *  used about evenly, or seen too little to tell, gets no category. Small
-         *  categories therefore need strong evidence, not just a high rate. */
+         *  predicts, by an exact binomial test (valid at any count, so a small
+         *  group with a word all of its own gets it), at 95% confidence split
+         *  across the categories (Bonferroni), so that among many small groups
+         *  none claims a common word by chance. Among the significant categories
+         *  the one where the word is over-used the most wins; a word significant
+         *  nowhere gets no category (grey). */
         void colorInfo(Entry en, Cnt c, int g) {
             if (c.vs != null && c.vw[g] > 0) en.cval = c.vs[g] / c.vw[g];
             if (c.cat != null && c.cat[g] != null) {
                 double[] tok = totals[g].catTok;
                 double all = 0, T = 0;
+                int K = 0;
                 for (int k = 1; k < c.cat[g].length; k++) {
                     all += c.cat[g][k];
-                    if (tok != null) T += tok[k];
+                    if (tok != null && tok[k] > 0) { T += tok[k]; K++; }
                 }
-                double p0 = T > 0 ? all / T : 0, bestZ = 1.96;
+                long nn = Math.round(all);
+                double alpha = 0.05 / Math.max(1, K), bestLift = 0;
                 int bk = 0;
-                if (p0 > 0 && p0 < 1) {
+                if (nn > 0 && T > 0) {
                     for (int k = 1; k < c.cat[g].length; k++) {
                         double Tk = tok == null ? 0 : tok[k];
-                        // too little text to judge: the z-score needs an expected count of at least 5
-                        if (Tk <= 0 || Tk * p0 < 5) continue;
-                        double z = (c.cat[g][k] - Tk * p0) / Math.sqrt(Tk * p0 * (1 - p0));
-                        if (z > bestZ) { bestZ = z; bk = k; }
+                        if (Tk <= 0 || Tk >= T) continue;
+                        // among the groups where the word is significantly over-used,
+                        // the one where it is over-used the most
+                        double lift = (c.cat[g][k] / Tk) / (all / T);
+                        if (lift > bestLift && binomUpper(Math.round(c.cat[g][k]), nn, Tk / T) < alpha) { bestLift = lift; bk = k; }
                     }
                 }
-                // how many times more often the word is used there than overall
-                if (bk > 0) { en.ccat = bk; en.cshare = (c.cat[g][bk] / tok[bk]) / p0; }
+                if (bk > 0) { en.ccat = bk; en.cshare = (c.cat[g][bk] / tok[bk]) / (all / T); }
             }
             en.ccolor = c.col;
         }

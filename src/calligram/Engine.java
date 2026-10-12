@@ -179,7 +179,7 @@ public final class Engine {
      *  (letters joining, right-to-left) are laid out properly. The same glyphs
      *  are used to measure, to pack and to draw (as SVG paths). */
     public GlyphVector glyphs(String word, int size) {
-        Font base = rf.base.canDisplayUpTo(word) == -1 ? rf.base : fb;
+        Font base = fontFor(word);
         Font f = base.deriveFont((float) size);
         char[] c = word.toCharArray();
         if (Font.textRequiresLayout(c, 0, c.length)) {
@@ -191,7 +191,18 @@ public final class Engine {
     }
 
     /** true if a word needs the fallback font */
-    public boolean usesFallback(String word) { return rf.base.canDisplayUpTo(word) != -1; }
+    /** The font that draws a word: the one chosen for its writing system with
+     *  scriptfonts(), else the main font if it can draw every character, else a
+     *  font known to cover the script. */
+    public Font fontFor(String word) {
+        Font o = Fonts.overrideFor(word);
+        if (o != null) return o;
+        return rf.base.canDisplayUpTo(word) == -1 ? rf.base : Fonts.fallbackFor(word);
+    }
+    /** true if a word is drawn with a font other than the main one */
+    public boolean usesFallback(String word) { return fontFor(word) != rf.base; }
+    /** the family of the font that draws a word */
+    public String fallbackFamily(String word) { return fontFor(word).getFamily(java.util.Locale.ROOT); }
 
     /** Ink rectangle of a word relative to its text origin (left end of baseline). */
     public Rectangle2D ink(String word, int size) {
@@ -449,17 +460,21 @@ public final class Engine {
                 // in its region: the planned size, else bisection down to minFont
                 int[] box = regionBox.get(reg[i]);
                 double[] target = (p.near && pt != null) ? pt[i] : null;
-                // near: first the largest size at which the word fits close to
-                // its own point; only if it cannot, the nearest free spot anywhere
+                // near: the search widens in steps - within about the word's own
+                // size of its point, then 3 and 8 times that - and at each step the
+                // largest size that fits there; only if all fail, the nearest free
+                // spot anywhere in the area. Being close to the real location comes
+                // before full size.
                 Object[] hit = null;
-                for (int stage = target == null ? 1 : 0; stage < 2 && hit == null; stage++) {
-                    boolean strict = stage == 0;
-                    hit = fitInRegion(words[i], size, pref, outside, box, occ, scan, rng, m, target, strict);
+                double[] reaches = target == null ? new double[]{0} : new double[]{1, 3, 8, 0};
+                for (int st = 0; st < reaches.length && hit == null; st++) {
+                    double rf = reaches[st];
+                    hit = fitInRegion(words[i], size, pref, outside, box, occ, scan, rng, m, target, rf);
                     if (hit == null) {
                         int lo = p.minFont, hi = size - 1;
                         while (lo <= hi) {
                             int mid = (lo + hi) >>> 1;
-                            Object[] h2 = fitInRegion(words[i], mid, pref, outside, box, occ, scan, rng, m, target, strict);
+                            Object[] h2 = fitInRegion(words[i], mid, pref, outside, box, occ, scan, rng, m, target, rf);
                             if (h2 != null) { hit = h2; lo = mid + 1; } else hi = mid - 1;
                         }
                     }
@@ -524,7 +539,7 @@ public final class Engine {
     /** Try a word at one size in its region (both orientations if rotation is
      *  allowed): {size, orientation, position, ink, box width, box height}, or null. */
     private Object[] fitInRegion(String word, int size, int pref, Bits outside, int[] box,
-                                 Bits occ, Scan scan, Random rng, int m, double[] target, boolean strict) {
+                                 Bits occ, Scan scan, Random rng, int m, double[] target, double reachFactor) {
         if (box == null) return null;
         Rectangle2D ink = ink(word, size);
         int iw = (int) Math.ceil(ink.getWidth()), ih = (int) Math.ceil(ink.getHeight());
@@ -538,8 +553,8 @@ public final class Engine {
             int[] pos = null;
             if (target != null) {
                 // near: the free position whose box centre is closest to the word's point
-                // strict: the box centre must be within about the word's own width of its point
-                double reach = strict ? Math.max(24, 0.75 * Math.max(bw, bh)) : Double.MAX_VALUE;
+                // within reachFactor times about the word's own size of its point (0: anywhere)
+                double reach = reachFactor > 0 ? reachFactor * Math.max(24, 0.75 * Math.max(bw, bh)) : Double.MAX_VALUE;
                 pos = scan.pickNearest(occ, outside, bw, bh, y0, y1, target[0] - bw / 2.0, target[1] - bh / 2.0, reach);
                 if (pos != null) return new Object[]{size, orient, pos, ink, bw, bh};
                 continue;

@@ -1,4 +1,4 @@
-*! calligram v1.0.4  12oct2026  (formerly wordcloud2 3.5)
+*! calligram v1.0.8  12oct2026  (formerly wordcloud2 3.5)
 *! Word clouds in any shape, from survey text to maps (HTML, PNG, JPG, SVG)
 *! Author: Fahad Mirza | Editor: Claude (Anthropic)
 *!
@@ -64,6 +64,7 @@ program define calligram, rclass
         COLORBy(string)                 ///
         COLORVar(varname string)        ///
         COLORImage(string)              ///
+        SCRIPTFonts(string asis)        ///
         ]
 
     // =========================================================================
@@ -475,6 +476,30 @@ program define calligram, rclass
         di as error "calligram: with colorvar() or colorimage() the colours are given; drop palette() and gradient()"
         exit 198
     }
+    // fonts chosen per writing system: scriptfonts(arabic "Noto Nastaliq Urdu" chinese SimHei)
+    local _jsf ""
+    if `"`scriptfonts'"' != "" {
+        local _sf `"`scriptfonts'"'
+        local _spec ""
+        while `"`_sf'"' != "" {
+            gettoken _s _sf : _sf
+            gettoken _f _sf : _sf
+            local _s = lower(`"`_s'"')
+            if !inlist(`"`_s'"', "arabic", "hebrew", "devanagari", "bengali", "tamil", "telugu", "gurmukhi", "gujarati", "thai") ///
+             & !inlist(`"`_s'"', "chinese", "japanese", "korean", "cyrillic", "greek", "latin", "ethiopic") {
+                di as error `"calligram: scriptfonts(): unknown writing system "`_s'""'
+                di as error "  use arabic, hebrew, devanagari, bengali, tamil, telugu, gurmukhi, gujarati, thai,"
+                di as error "  chinese, japanese, korean, cyrillic, greek, latin or ethiopic"
+                exit 198
+            }
+            if `"`_f'"' == "" {
+                di as error `"calligram: scriptfonts(): give a font name after `_s'"'
+                exit 198
+            }
+            local _spec `"`_spec'`_s'=`_f';"'
+        }
+        mata: st_local("_jsf", cg_enc(st_local("_spec")))
+    }
     local _cimg ""
     if `"`colorimage'"' != "" {
         local _cimg = strtrim(`"`colorimage'"')
@@ -783,6 +808,7 @@ program define calligram, rclass
     if `"`colorby'"' != "" local _needj "colorby()"
     if "`colorvar'" != "" local _needj "colorvar()"
     if `"`colorimage'"' != "" local _needj "colorimage()"
+    if `"`scriptfonts'"' != "" local _needj "scriptfonts()"
     if !`_hasjar' & "`_needj'" != "" {
         di as error "calligram: `_needj' need the Java engine (calligram.jar), which was not found."
         di as error "  Reinstall with {cmd:net install calligram, replace}."
@@ -896,7 +922,7 @@ program define calligram, rclass
                  weight=`=("`weight'" != "")' paths=`=(`"`_img'"' != "")' ///
                  regionmode=`_rmode' shapesfile=`_jshp' projection=`_proj' ///
                  near=`=("`near'" != "")' colormode=`_cjm' colork=`_cK'      ///
-                 colorpos=`_cpos' colorimage=`_jcimg')
+                 colorpos=`_cpos' colorimage=`_jcimg' scriptfonts=`_jsf')
         local _jrc = _rc
         if `_jrc' == 0 {
             local _jpath 1
@@ -1130,6 +1156,9 @@ program define calligram, rclass
                         else if ustrregexm(`"`_p'"', "^#[0-9A-Fa-f]{6}$") local _c `"`_p'"'
                     }
                     if `"`_c'"' == "" & `"`gradient'"' != "" local _c : word `_k' of `=subinstr("`_cgl'", ",", " ", .)'
+                    // more than 10 groups: 20 distinct colours (Tableau 20 order) before repeating
+                    local _tab20 "#4e79a7 #f28e2b #e15759 #76b7b2 #59a14f #edc948 #b07aa1 #ff9da7 #9c755f #bab0ac #a0cbe8 #ffbe7d #ff9d9a #8cd17d #f1ce63 #d4a6c8 #86bcb6 #fabfd2 #d7b5a6 #79706e"
+                    if `"`_c'"' == "" & `_cK' > 10 local _c : word `=mod(`_k' - 1, 20) + 1' of `_tab20'
                     if `"`_c'"' == "" local _c : word `=mod(`_k' - 1, 10) + 1' of `_tab10'
                     local _ccol`_k' `"`_c'"'
                 }
