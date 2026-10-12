@@ -1,0 +1,35 @@
+v 3
+d calligram: word clouds in any shape, from survey text to maps
+d
+d Author: Fahad Mirza
+d Support: https://github.com/fahad-mirza/calligram_Stata/issues
+d
+d calligram turns a text variable into a word cloud: an interactive HTML
+d page that works offline, and PNG, JPG or SVG pictures. Words are packed by
+d the shape of their letters and never overlap. Clouds can fill named
+d shapes, an image, or the areas of a shapefile, with each word inside its
+d own area (a city in its country) or near its real location. Text handling:
+d stopwords (English, French, Spanish, Portuguese), plurals, hyphenated
+d words, two-word phrases; by() groups, weights, if/in, pre-counted words,
+d colour by a variable, and results saved as a dataset. A bundled Java
+d engine runs on Stata's own Java (nothing else to install). Stata 17+.
+d
+d Example data and the gallery do-file: net get calligram
+d
+d Version 1.0.4 (Beta). Formerly wordcloud2 3.5.
+d KW: word cloud
+d KW: wordcloud
+d KW: text analysis
+d KW: survey responses
+d KW: maps
+f calligram.ado
+f calligram.sthlp
+f calligram.jar
+f calligram_example.do
+f calligram_gallery.do
+f cg_cities.dta
+f cg_inaugural.dta
+f cg_alice.dta
+f cg_countries.dta
+f cg_countries_shp.dta
+e

@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang='en'><head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<link rel='preconnect' href='https://fonts.googleapis.com'>
+<link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>
+<link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Lato:wght@700&amp;display=block'>
+<script>(function(){var m=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(!m){var h=document.documentElement;h.classList.add('wc-pre');setTimeout(function(){h.classList.remove('wc-pre');},4000);}})();</script>
+<title>Word Cloud</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);
+       font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+       display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr)}
+  #hdr{grid-column:1/-1;grid-row:1;display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;
+       padding:10px 20px;border-bottom:1px solid rgba(127,127,127,.22)}
+  #hdr h1{margin:0;font-weight:700;letter-spacing:.3px;line-height:1.25}
+  #nw{font-size:14px;opacity:.6}
+  #tabs{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+  #stage{grid-column:1;grid-row:2;min-height:0;display:flex;flex-direction:column;align-items:center;
+       justify-content:center;gap:14px;padding:12px;min-width:0}
+  .pane{display:flex;flex-direction:column;align-items:center}
+  .plabel{font-weight:600;opacity:.85}
+  .legend{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px}
+  .legend .lt{font-weight:600;opacity:.85}
+  .legend .bar{display:inline-block;width:170px;height:10px;border-radius:5px}
+  .legend .sw{display:inline-flex;align-items:center;gap:6px}
+  .legend .sw i{display:inline-block;width:12px;height:12px;border-radius:3px}
+  svg.wc{display:block;max-width:100%;height:auto}
+  #tt{position:fixed;display:none;pointer-events:none;z-index:30;background:rgba(0,0,0,.85);
+       color:#fff;padding:6px 10px;border-radius:6px;font-size:13px}
+  #credit{position:fixed;left:14px;bottom:8px;font-size:11px;opacity:.4}
+  #panel~#credit{display:none}
+  #expbtn{position:fixed;right:16px;bottom:14px;padding:9px 18px;border:none;border-radius:8px;
+       background:#4e79a7;color:#fff;font:inherit;font-size:14px;cursor:pointer;
+       box-shadow:0 6px 18px rgba(0,0,0,.3)}
+/* calligram interactive layer styles (v2.3); inlined into the HTML page */
+body.wc-fit{height:100vh;overflow:hidden}
+body.wc-fit #stage{overflow:hidden}
+body.has-tabs .plabel{display:none}
+
+/* words: hover focus, load animation, zoom cursor */
+svg.wc .w{cursor:pointer;transition:opacity .18s}
+svg.wc .w .hit{fill:transparent}
+svg.wc.focusing .w:not(.hot){opacity:.25 !important}
+html.wc-pre svg.wc{opacity:0}   /* until the fade-in starts (see ui.js); the whole cloud, not each word,
+                                   so revealing it does not start a transition on every word */
+svg.wc.zoomed{cursor:grab}
+svg.wc.dragging{cursor:grabbing}
+
+/* hover card */
+#tt{background:rgba(14,19,34,.94);color:#f2f2f2;border:1px solid rgba(255,255,255,.14);
+    border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.5;
+    box-shadow:0 10px 28px rgba(0,0,0,.35);max-width:280px}
+#tt .tw{font-weight:700;font-size:16px;margin-bottom:2px}
+#tt .th{opacity:.55;font-size:11px;margin-top:4px}
+#tt .tn{margin-top:3px;color:#ffd479}
+
+/* header tabs */
+#tabs button{font:inherit;font-size:13px;color:var(--ink);cursor:pointer;background:transparent;
+    border:1px solid rgba(127,127,127,.38);border-radius:16px;padding:5px 14px}
+#tabs button:hover{background:rgba(127,127,127,.16)}
+#tabs button.on{background:rgba(127,127,127,.30);font-weight:600}
+
+/* side panel: open (labelled) or rail (icons) */
+#panel{grid-column:2;grid-row:2;display:flex;overflow:hidden;min-height:0;
+    border-left:1px solid rgba(127,127,127,.22);background:rgba(127,127,127,.06);
+    transition:width .22s ease}
+#panel.open{width:320px}
+/* fixed (no fitting): the page scrolls, the panel stays in view at window height */
+body:not(.wc-fit) #panel{position:sticky;top:0;align-self:start}
+#panel.rail{width:60px}
+#panel.open .railbox,#panel.rail .fullbox{display:none}
+.railbox{display:flex;flex-direction:column;align-items:center;gap:4px;width:60px;padding:10px 0;overflow-y:auto;min-height:0}
+.fullbox{display:flex;flex-direction:column;width:320px;padding:4px 18px 14px;overflow-y:auto;min-height:0}
+/* a category key that hides and shows its words */
+.legend .sw[data-cat]{cursor:pointer;user-select:none;border-radius:6px;padding:1px 5px}
+.legend .sw[data-cat]:hover{background:rgba(127,127,127,.18)}
+.legend .sw.off{opacity:.35;text-decoration:line-through}
+
+/* buttons */
+.ib{width:40px;height:40px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+    border-radius:10px;border:1px solid transparent;background:transparent;color:var(--ink);
+    cursor:pointer;position:relative;padding:0}
+.ib:hover:not(:disabled){background:rgba(127,127,127,.18)}
+.ib:disabled{opacity:.35;cursor:default}
+.ib.badge:not([data-badge=""])::after{content:attr(data-badge);position:absolute;top:2px;right:2px;
+    min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#e15759;color:#fff;
+    font-size:10px;line-height:16px;font-weight:700}
+.btn{font:inherit;font-size:13px;color:var(--ink);background:rgba(127,127,127,.12);
+    border:1px solid rgba(127,127,127,.35);border-radius:8px;padding:7px 13px;cursor:pointer}
+.btn:hover{background:rgba(127,127,127,.24)}
+.linkbtn{border:0;background:none;color:inherit;opacity:.75;font:inherit;font-size:12px;cursor:pointer;
+    padding:6px 0;margin-right:14px;text-decoration:underline;text-underline-offset:3px}
+.linkbtn:hover{opacity:1}
+.linkbtn:disabled{opacity:.35;cursor:default;text-decoration:none}
+.ib:focus-visible,.btn:focus-visible,.linkbtn:focus-visible,.swatch:focus-visible,#tabs button:focus-visible{
+    outline:2px solid #4e79a7;outline-offset:2px}
+
+/* rail details */
+.sep{width:28px;height:1px;background:rgba(127,127,127,.3);margin:6px 0}
+.vsl{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0}
+.vrange{writing-mode:vertical-lr;direction:rtl;width:22px;height:120px;margin:0;accent-color:#4e79a7}
+.vlab{font-size:11px;opacity:.75;font-variant-numeric:tabular-nums}
+
+/* open panel details */
+.phead{display:flex;align-items:center;justify-content:space-between;padding:10px 0 2px}
+.ptitle{font-weight:700;font-size:15px;letter-spacing:.3px}
+.sec{padding:12px 0;border-bottom:1px solid rgba(127,127,127,.18)}
+.sec h2{margin:0 0 8px;font-size:11.5px;text-transform:uppercase;letter-spacing:.8px;opacity:.6;font-weight:700}
+.searchwrap{display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:10px;
+    border:1px solid rgba(127,127,127,.35);background:rgba(127,127,127,.10)}
+.searchwrap:focus-within{border-color:#4e79a7}
+.searchwrap input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;
+    font-size:14px;padding:9px 0;outline:none}
+.sicon{display:inline-flex;opacity:.6}
+.note{font-size:12px;opacity:.7;margin-top:6px;min-height:1em;font-variant-numeric:tabular-nums}
+.hrow{display:flex;align-items:center;gap:10px}
+.hrow .note{margin:0;min-width:3em;text-align:right}
+.hrow input[type=range]{flex:1;accent-color:#4e79a7}
+.list{list-style:none;margin:0;padding:0}
+.row{display:grid;grid-template-columns:22px minmax(0,1fr) 56px 52px;align-items:center;gap:8px;
+    padding:4px 6px;border-radius:6px;cursor:pointer;font-size:13px}
+.row:hover{background:rgba(127,127,127,.15)}
+.row.off{opacity:.4}
+.row.off .nm{text-decoration:line-through}
+.rk{opacity:.5;font-size:11px;text-align:right;font-variant-numeric:tabular-nums}
+.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ct{text-align:right;opacity:.75;font-variant-numeric:tabular-nums}
+.bw{height:8px;border-radius:4px;background:rgba(127,127,127,.15);overflow:hidden}
+.bar{display:block;height:100%;border-radius:4px}
+.hint{font-size:11px;opacity:.55;margin-top:6px}
+.brow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.brow .ib{border-color:rgba(127,127,127,.35)}
+.swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:10px}
+.swatch{height:26px;border-radius:7px;border:2px solid transparent;cursor:pointer;padding:0;
+    box-shadow:inset 0 0 0 1px rgba(127,127,127,.35)}
+.swatch.on{border-color:var(--ink)}
+.pfoot{display:flex;align-items:center;justify-content:space-between;padding-top:12px;margin-top:auto}
+.credit{font-size:11px;opacity:.45}
+
+/* shortcuts list */
+.help{position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:40}
+.helpcard{background:var(--bg);color:var(--ink);border:1px solid rgba(127,127,127,.35);border-radius:14px;
+    padding:20px 24px;min-width:320px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.helpcard h2{margin:0 0 12px;font-size:16px}
+.helpcard table{margin-bottom:14px;border-collapse:collapse}
+.helpcard td{padding:5px 12px 5px 0;font-size:13px}
+kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border-radius:5px;
+    border:1px solid rgba(127,127,127,.45);background:rgba(127,127,127,.12);font:12px ui-monospace,Consolas,monospace}
+
+@media (max-width:760px){#panel.open{width:270px}.fullbox{width:270px}}
+@media (prefers-reduced-motion:reduce){#panel{transition:none}}
+</style></head>
+<body style='--bg:#16213e;--ink:#eeeeee'>
+<header id='hdr'>
+<h1 style='color:var(--ink);font-size:1.4em'>Word Cloud</h1>
+<span id='nw'></span>
+</header>
+<main id='stage'>
+<div class='pane' data-label='' data-file=''>
+<svg class='wc' width='1600' height='800' viewBox='0 0 1600 800'
+     xmlns='http://www.w3.org/2000/svg'>
+<rect class='bg' width='1600' height='800' fill='#16213e' rx='12'/>
+<g font-family='Lato, Arial, sans-serif' font-weight='bold'
+   style='font-kerning:none;font-variant-ligatures:none'>
+<text class='w' transform='translate(480.4,349.2)' font-size='322' fill='#4e79a7' textLength='974.7' lengthAdjust='spacingAndGlyphs' data-word='people' data-count='642'>people</text>
+<text class='w' transform='translate(-0.2,657.7)' font-size='295' fill='#f28e2b' textLength='1595.7' lengthAdjust='spacingAndGlyphs' data-word='government' data-count='632'>government</text>
+<text class='w' transform='translate(586.2,174.3)' font-size='227' fill='#e15759' textLength='643.8' lengthAdjust='spacingAndGlyphs' data-word='nation' data-count='549'>nation</text>
+<text class='w' transform='translate(28.9,172.4)' font-size='208' fill='#76b7b2' textLength='554.2' lengthAdjust='spacingAndGlyphs' data-word='states' data-count='456'>states</text>
+<text class='w' transform='translate(603.7,767.2)' font-size='157' fill='#59a14f' textLength='542.7' lengthAdjust='spacingAndGlyphs' data-word='country' data-count='376'>country</text>
+<text class='w' transform='translate(20.2,420.5)' font-size='153' fill='#edc948' textLength='354.1' lengthAdjust='spacingAndGlyphs' data-word='great' data-count='356'>great</text>
+<text class='w' transform='translate(7.6,299.7)' font-size='153' fill='#b07aa1' textLength='392.6' lengthAdjust='spacingAndGlyphs' data-word='world' data-count='355'>world</text>
+<text class='w' transform='translate(168.8,752.9)' font-size='151' fill='#ff9da7' textLength='430.7' lengthAdjust='spacingAndGlyphs' data-word='power' data-count='348'>power</text>
+<text class='w' transform='translate(1130.7,480.8)' font-size='136' fill='#9c755f' textLength='271.7' lengthAdjust='spacingAndGlyphs' data-word='time' data-count='278'>time</text>
+<text class='w' transform='translate(591.0,497.7)' font-size='121' fill='#bab0ac' textLength='491.2' lengthAdjust='spacingAndGlyphs' data-word='american' data-count='277'>american</text>
+<text class='w' transform='translate(1154.0,761.0)' font-size='120' fill='#4e79a7' textLength='403.1' lengthAdjust='spacingAndGlyphs' data-word='citizens' data-count='273'>citizens</text>
+<text class='w' transform='translate(1279.8,149.7)' font-size='118' fill='#f28e2b' textLength='298.6' lengthAdjust='spacingAndGlyphs' data-word='rights' data-count='266'>rights</text>
+<text class='w' transform='translate(156.6,498.7)' font-size='98' fill='#e15759' textLength='342.6' lengthAdjust='spacingAndGlyphs' data-word='america' data-count='265'>america</text>
+<text class='w' transform='translate(1441.9,236.1)' font-size='97' fill='#76b7b2' textLength='151.2' lengthAdjust='spacingAndGlyphs' data-word='law' data-count='262'>law</text>
+<text class='w' transform='translate(563.1,412.2)' font-size='96' fill='#59a14f' textLength='252.0' lengthAdjust='spacingAndGlyphs' data-word='peace' data-count='259'>peace</text>
+<text class='w' transform='translate(1408.2,417.5)' font-size='95' fill='#edc948' textLength='180.5' lengthAdjust='spacingAndGlyphs' data-word='new' data-count='256'>new</text>
+<text class='w' transform='translate(3.1,778.5)' font-size='64' fill='#b07aa1' textLength='171.8' lengthAdjust='spacingAndGlyphs' data-word='public' data-count='229'>public</text>
+<text class='w' transform='translate(1238.9,53.0)' font-size='62' fill='#ff9da7' textLength='334.0' lengthAdjust='spacingAndGlyphs' data-word='constitution' data-count='214'>constitution</text>
+<text class='w' transform='translate(1448.9,323.1)' font-size='62' fill='#9c755f' textLength='125.9' lengthAdjust='spacingAndGlyphs' data-word='duty' data-count='214'>duty</text>
+<text class='w' transform='translate(377.5,59.1)' font-size='62' fill='#bab0ac' textLength='177.0' lengthAdjust='spacingAndGlyphs' data-word='united' data-count='212'>united</text>
+<text class='w' transform='translate(1062.5,40.9)' font-size='61' fill='#4e79a7' textLength='102.7' lengthAdjust='spacingAndGlyphs' data-word='war' data-count='208'>war</text>
+<text class='w' transform='translate(581.8,49.8)' font-size='59' fill='#f28e2b' textLength='223.0' lengthAdjust='spacingAndGlyphs' data-word='freedom' data-count='193'>freedom</text>
+<text class='w' transform='translate(815.3,402.3)' font-size='57' fill='#e15759' textLength='221.3' lengthAdjust='spacingAndGlyphs' data-word='interests' data-count='190'>interests</text>
+<text class='w' transform='translate(1258.8,399.3)' font-size='57' fill='#76b7b2' textLength='143.7' lengthAdjust='spacingAndGlyphs' data-word='union' data-count='190'>union</text>
+<text class='w' transform='translate(185.8,56.9)' font-size='57' fill='#59a14f' textLength='102.6' lengthAdjust='spacingAndGlyphs' data-word='free' data-count='187'>free</text>
+<text class='w' transform='translate(20.8,487.8)' font-size='57' fill='#edc948' textLength='135.7' lengthAdjust='spacingAndGlyphs' data-word='years' data-count='184'>years</text>
+<text class='w' transform='translate(46.0,215.4)' font-size='49' fill='#b07aa1' textLength='176.0' lengthAdjust='spacingAndGlyphs' data-word='national' data-count='161'>national</text>
+<text class='w' transform='translate(374.0,342.4)' font-size='49' fill='#ff9da7' textLength='109.8' lengthAdjust='spacingAndGlyphs' data-word='hope' data-count='160'>hope</text>
+<text class='w' transform='translate(492.9,449.4)' font-size='49' fill='#9c755f' textLength='56.6' lengthAdjust='spacingAndGlyphs' data-word='let' data-count='157'>let</text>
+<text class='w' transform='translate(309.6,786.7)' font-size='40' fill='#bab0ac' textLength='171.4' lengthAdjust='spacingAndGlyphs' data-word='principles' data-count='155'>principles</text>
+<text class='w' transform='translate(395.0,392.0)' font-size='39' fill='#4e79a7' textLength='87.5' lengthAdjust='spacingAndGlyphs' data-word='good' data-count='150'>good</text>
+<text class='w' transform='translate(1400.6,447.3)' font-size='39' fill='#f28e2b' textLength='75.5' lengthAdjust='spacingAndGlyphs' data-word='men' data-count='148'>men</text>
+<text class='w' transform='translate(9.5,45.9)' font-size='39' fill='#e15759' textLength='113.1' lengthAdjust='spacingAndGlyphs' data-word='justice' data-count='147'>justice</text>
+<text class='w' transform='translate(1419.0,484.9)' font-size='39' fill='#76b7b2' textLength='88.2' lengthAdjust='spacingAndGlyphs' data-word='spirit' data-count='146'>spirit</text>
+<text class='w' transform='translate(531.6,497.0)' font-size='39' fill='#59a14f' textLength='54.4' lengthAdjust='spacingAndGlyphs' data-word='life' data-count='143'>life</text>
+<text class='w' transform='translate(15.7,325.9)' font-size='38' fill='#edc948' textLength='137.6' lengthAdjust='spacingAndGlyphs' data-word='purpose' data-count='138'>purpose</text>
+<text class='w' transform='translate(1482.6,270.2)' font-size='38' fill='#b07aa1' textLength='109.3' lengthAdjust='spacingAndGlyphs' data-word='liberty' data-count='137'>liberty</text>
+<text class='w' transform='translate(1501.7,453.2)' font-size='38' fill='#ff9da7' textLength='86.8' lengthAdjust='spacingAndGlyphs' data-word='work' data-count='135'>work</text>
+<text class='w' transform='translate(1165.8,786.3)' font-size='37' fill='#9c755f' textLength='145.6' lengthAdjust='spacingAndGlyphs' data-word='congress' data-count='130'>congress</text>
+<text class='w' transform='translate(399.8,261.8)' font-size='36' fill='#bab0ac' textLength='57.7' lengthAdjust='spacingAndGlyphs' data-word='day' data-count='125'>day</text>
+<text class='w' transform='translate(1423.8,686.1)' font-size='36' fill='#4e79a7' textLength='84.5' lengthAdjust='spacingAndGlyphs' data-word='party' data-count='125'>party</text>
+<text class='w' transform='translate(410.8,441.8)' font-size='36' fill='#f28e2b' textLength='68.9' lengthAdjust='spacingAndGlyphs' data-word='best' data-count='123'>best</text>
+<text class='w' transform='translate(398.4,207.8)' font-size='36' fill='#e15759' textLength='91.8' lengthAdjust='spacingAndGlyphs' data-word='today' data-count='122'>today</text>
+<text class='w' transform='translate(986.8,33.1)' font-size='36' fill='#76b7b2' textLength='65.5' lengthAdjust='spacingAndGlyphs' data-word='part' data-count='121'>part</text>
+<text class='w' transform='translate(1454.8,358.8)' font-size='36' fill='#59a14f' textLength='89.1' lengthAdjust='spacingAndGlyphs' data-word='know' data-count='118'>know</text>
+<text class='w' transform='translate(498.8,787.8)' font-size='36' fill='#edc948' textLength='95.6' lengthAdjust='spacingAndGlyphs' data-word='policy' data-count='117'>policy</text>
+<text class='w' transform='translate(1081.1,481.0)' font-size='35' fill='#b07aa1' textLength='58.4' lengthAdjust='spacingAndGlyphs' data-word='god' data-count='113'>god</text>
+<text class='w' transform='translate(207.3,331.0)' font-size='35' fill='#ff9da7' textLength='96.8' lengthAdjust='spacingAndGlyphs' data-word='fellow' data-count='112'>fellow</text>
+<text class='w' transform='translate(198.9,784.0)' font-size='35' fill='#9c755f' textLength='108.7' lengthAdjust='spacingAndGlyphs' data-word='history' data-count='110'>history</text>
+<text class='w' transform='translate(1315.1,688.0)' font-size='31' fill='#bab0ac' textLength='108.8' lengthAdjust='spacingAndGlyphs' data-word='political' data-count='110'>political</text>
+<text class='w' transform='translate(396.4,299.0)' font-size='31' fill='#4e79a7' textLength='98.8' lengthAdjust='spacingAndGlyphs' data-word='foreign' data-count='109'>foreign</text>
+<text class='w' transform='translate(1432.2,788.3)' font-size='30' fill='#f28e2b' textLength='126.2' lengthAdjust='spacingAndGlyphs' data-word='president' data-count='108'>president</text>
+<text class='w' transform='translate(1166.4,46.1)' font-size='30' fill='#e15759' textLength='69.7' lengthAdjust='spacingAndGlyphs' data-word='force' data-count='107'>force</text>
+<text class='w' transform='translate(1379.1,582.3)' font-size='30' fill='#76b7b2' textLength='46.9' lengthAdjust='spacingAndGlyphs' data-word='live' data-count='106'>live</text>
+<text class='w' transform='translate(1260.2,81.3)' font-size='30' fill='#59a14f' textLength='66.0' lengthAdjust='spacingAndGlyphs' data-word='need' data-count='104'>need</text>
+<text class='w' transform='translate(921.3,429.5)' font-size='29' fill='#edc948' textLength='186.8' lengthAdjust='spacingAndGlyphs' data-word='administration' data-count='102'>administration</text>
+<text class='w' transform='translate(660.2,790.2)' font-size='29' fill='#b07aa1' textLength='55.4' lengthAdjust='spacingAndGlyphs' data-word='man' data-count='100'>man</text>
+<text class='w' transform='translate(1463.0,177.5)' font-size='29' fill='#ff9da7' textLength='125.4' lengthAdjust='spacingAndGlyphs' data-word='executive' data-count='99'>executive</text>
+<text class='w' transform='translate(1314.4,789.3)' font-size='29' fill='#9c755f' textLength='80.2' lengthAdjust='spacingAndGlyphs' data-word='future' data-count='99'>future</text>
+<text class='w' transform='translate(699.2,593.5)' font-size='29' fill='#bab0ac' textLength='55.5' lengthAdjust='spacingAndGlyphs' data-word='long' data-count='99'>long</text>
+<text class='w' transform='translate(727.3,299.5)' font-size='29' fill='#4e79a7' textLength='91.2' lengthAdjust='spacingAndGlyphs' data-word='service' data-count='99'>service</text>
+<text class='w' transform='translate(1086.3,376.4)' font-size='29' fill='#f28e2b' textLength='91.3' lengthAdjust='spacingAndGlyphs' data-word='system' data-count='99'>system</text>
+<text class='w' transform='translate(1148.2,679.5)' font-size='29' fill='#e15759' textLength='63.9' lengthAdjust='spacingAndGlyphs' data-word='hand' data-count='97'>hand</text>
+<text class='w' transform='translate(1347.1,296.3)' font-size='26' fill='#76b7b2' textLength='100.6' lengthAdjust='spacingAndGlyphs' data-word='question' data-count='97'>question</text>
+<text class='w' transform='translate(1260.5,613.3)' font-size='26' fill='#59a14f' textLength='53.5' lengthAdjust='spacingAndGlyphs' data-word='faith' data-count='96'>faith</text>
+<text class='w' transform='translate(996.4,791.3)' font-size='26' fill='#edc948' textLength='79.0' lengthAdjust='spacingAndGlyphs' data-word='human' data-count='96'>human</text>
+<text class='w' transform='translate(749.4,676.6)' font-size='26' fill='#b07aa1' textLength='99.6' lengthAdjust='spacingAndGlyphs' data-word='progress' data-count='96'>progress</text>
+<text class='w' transform='translate(286.1,22.5)' font-size='26' fill='#ff9da7' textLength='100.6' lengthAdjust='spacingAndGlyphs' data-word='common' data-count='95'>common</text>
+<text class='w' transform='translate(795.4,793.3)' font-size='26' fill='#9c755f' textLength='49.1' lengthAdjust='spacingAndGlyphs' data-word='land' data-count='95'>land</text>
+<text class='w' transform='translate(848.6,790.1)' font-size='23' fill='#bab0ac' textLength='137.3' lengthAdjust='spacingAndGlyphs' data-word='responsibility' data-count='95'>responsibility</text>
+<text class='w' transform='translate(296.4,663.4)' font-size='23' fill='#4e79a7' textLength='79.6' lengthAdjust='spacingAndGlyphs' data-word='support' data-count='94'>support</text>
+<text class='w' transform='translate(1521.8,681.1)' font-size='23' fill='#f28e2b' textLength='62.6' lengthAdjust='spacingAndGlyphs' data-word='whole' data-count='93'>whole</text>
+<text class='w' transform='translate(552.2,609.1)' font-size='23' fill='#e15759' textLength='73.1' lengthAdjust='spacingAndGlyphs' data-word='change' data-count='92'>change</text>
+<text class='w' transform='translate(1127.2,503.0)' font-size='23' fill='#76b7b2' textLength='58.9' lengthAdjust='spacingAndGlyphs' data-word='office' data-count='92'>office</text>
+<text class='w' transform='translate(1277.6,175.1)' font-size='23' fill='#59a14f' textLength='53.8' lengthAdjust='spacingAndGlyphs' data-word='place' data-count='92'>place</text>
+<text class='w' transform='translate(1084.6,279.1)' font-size='23' fill='#edc948' textLength='57.7' lengthAdjust='spacingAndGlyphs' data-word='home' data-count='90'>home</text>
+<text class='w' transform='translate(1028.2,679.1)' font-size='23' fill='#b07aa1' textLength='113.0' lengthAdjust='spacingAndGlyphs' data-word='confidence' data-count='89'>confidence</text>
+<text class='w' transform='translate(626.9,680.0)' font-size='23' fill='#ff9da7' textLength='115.5' lengthAdjust='spacingAndGlyphs' data-word='institutions' data-count='89'>institutions</text>
+<text class='w' transform='translate(429.6,665.4)' font-size='23' fill='#9c755f' textLength='77.8' lengthAdjust='spacingAndGlyphs' data-word='present' data-count='88'>present</text>
+<text class='w' transform='translate(5.2,735.9)' font-size='23' fill='#bab0ac' textLength='59.1' lengthAdjust='spacingAndGlyphs' data-word='effort' data-count='87'>effort</text>
+<text class='w' transform='translate(132.6,439.0)' font-size='23' fill='#4e79a7' textLength='101.2' lengthAdjust='spacingAndGlyphs' data-word='necessary' data-count='86'>necessary</text>
+<text class='w' transform='translate(396.6,229.1)' font-size='23' fill='#f28e2b' textLength='73.6' lengthAdjust='spacingAndGlyphs' data-word='believe' data-count='85'>believe</text>
+<text class='w' transform='translate(884.4,108.4)' font-size='23' fill='#e15759' textLength='31.3' lengthAdjust='spacingAndGlyphs' data-word='act' data-count='83'>act</text>
+<text class='w' transform='translate(575.5,285.9)' font-size='23' fill='#76b7b2' textLength='28.5' lengthAdjust='spacingAndGlyphs' data-word='far' data-count='83'>far</text>
+<text class='w' transform='translate(444.4,643.0)' font-size='23' fill='#59a14f' textLength='42.4' lengthAdjust='spacingAndGlyphs' data-word='give' data-count='83'>give</text>
+<text class='w' transform='translate(642.2,356.0)' font-size='23' fill='#edc948' textLength='58.1' lengthAdjust='spacingAndGlyphs' data-word='cause' data-count='82'>cause</text>
+<text class='w' transform='translate(862.2,679.1)' font-size='23' fill='#b07aa1' textLength='96.7' lengthAdjust='spacingAndGlyphs' data-word='condition' data-count='82'>condition</text>
+<text class='w' transform='translate(1511.6,75.1)' font-size='23' fill='#ff9da7' textLength='82.6' lengthAdjust='spacingAndGlyphs' data-word='republic' data-count='82'>republic</text>
+<text class='w' transform='translate(1180.5,371.6)' font-size='21' fill='#9c755f' textLength='78.7' lengthAdjust='spacingAndGlyphs' data-word='strength' data-count='82'>strength</text>
+<text class='w' transform='translate(704.3,651.6)' font-size='21' fill='#bab0ac' textLength='50.9' lengthAdjust='spacingAndGlyphs' data-word='equal' data-count='81'>equal</text>
+<text class='w' transform='translate(894.5,264.6)' font-size='21' fill='#4e79a7' textLength='67.5' lengthAdjust='spacingAndGlyphs' data-word='subject' data-count='81'>subject</text>
+<text class='w' transform='translate(305.5,442.6)' font-size='21' fill='#f28e2b' textLength='57.8' lengthAdjust='spacingAndGlyphs' data-word='action' data-count='80'>action</text>
+<text class='w' transform='translate(213.7,595.6)' font-size='21' fill='#e15759' textLength='57.8' lengthAdjust='spacingAndGlyphs' data-word='better' data-count='80'>better</text>
+<text class='w' transform='translate(640.5,199.6)' font-size='21' fill='#76b7b2' textLength='51.5' lengthAdjust='spacingAndGlyphs' data-word='stand' data-count='80'>stand</text>
+<text class='w' transform='translate(1073.3,609.6)' font-size='21' fill='#59a14f' textLength='29.2' lengthAdjust='spacingAndGlyphs' data-word='old' data-count='78'>old</text>
+<text class='w' transform='translate(720.3,788.1)' font-size='21' fill='#edc948' textLength='71.7' lengthAdjust='spacingAndGlyphs' data-word='century' data-count='77'>century</text>
+<text class='w' transform='translate(380.7,362.6)' font-size='21' fill='#b07aa1' textLength='40.1' lengthAdjust='spacingAndGlyphs' data-word='high' data-count='77'>high</text>
+<text class='w' transform='translate(1297.0,501.6)' font-size='21' fill='#ff9da7' textLength='90.5' lengthAdjust='spacingAndGlyphs' data-word='individual' data-count='77'>individual</text>
+<text class='w' transform='translate(1352.3,75.8)' font-size='20' fill='#9c755f' textLength='67.1' lengthAdjust='spacingAndGlyphs' data-word='opinion' data-count='77'>opinion</text>
+<text class='w' transform='translate(696.5,621.9)' font-size='20' fill='#bab0ac' textLength='65.8' lengthAdjust='spacingAndGlyphs' data-word='general' data-count='75'>general</text>
+<text class='w' transform='translate(307.8,208.9)' font-size='20' fill='#4e79a7' textLength='47.0' lengthAdjust='spacingAndGlyphs' data-word='heart' data-count='75'>heart</text>
+<text class='w' transform='translate(593.8,427.5)' font-size='20' fill='#f28e2b' textLength='72.6' lengthAdjust='spacingAndGlyphs' data-word='revenue' data-count='75'>revenue</text>
+<text class='w' transform='translate(100.5,17.9)' font-size='16' fill='#e15759' textLength='78.2' lengthAdjust='spacingAndGlyphs' data-word='democracy' data-count='74'>democracy</text>
+<text class='w' transform='translate(107.7,612.9)' font-size='16' fill='#76b7b2' textLength='50.0' lengthAdjust='spacingAndGlyphs' data-word='federal' data-count='74'>federal</text>
+<text class='w' transform='translate(1192.6,496.9)' font-size='16' fill='#59a14f' textLength='76.9' lengthAdjust='spacingAndGlyphs' data-word='generation' data-count='74'>generation</text>
+<text class='w' transform='translate(225.0,191.7)' font-size='16' fill='#edc948' textLength='52.8' lengthAdjust='spacingAndGlyphs' data-word='respect' data-count='74'>respect</text>
+<text class='w' transform='translate(842.6,16.4)' font-size='16' fill='#b07aa1' textLength='46.8' lengthAdjust='spacingAndGlyphs' data-word='secure' data-count='74'>secure</text>
+<text class='w' transform='translate(480.5,18.9)' font-size='16' fill='#ff9da7' textLength='49.2' lengthAdjust='spacingAndGlyphs' data-word='danger' data-count='73'>danger</text>
+<text class='w' transform='translate(1117.5,779.9)' font-size='16' fill='#9c755f' textLength='38.8' lengthAdjust='spacingAndGlyphs' data-word='order' data-count='73'>order</text>
+<text class='w' transform='translate(1558.6,752.9)' font-size='16' fill='#bab0ac' textLength='32.7' lengthAdjust='spacingAndGlyphs' data-word='seek' data-count='73'>seek</text>
+<text class='w' transform='translate(806.7,44.9)' font-size='16' fill='#4e79a7' textLength='27.9' lengthAdjust='spacingAndGlyphs' data-word='find' data-count='72'>find</text>
+<text class='w' transform='translate(318.0,640.4)' font-size='16' fill='#f28e2b' textLength='46.1' lengthAdjust='spacingAndGlyphs' data-word='means' data-count='72'>means</text>
+<text class='w' transform='translate(894.6,284.9)' font-size='16' fill='#e15759' textLength='65.7' lengthAdjust='spacingAndGlyphs' data-word='authority' data-count='71'>authority</text>
+<text class='w' transform='translate(212.1,19.1)' font-size='15' fill='#76b7b2' textLength='68.8' lengthAdjust='spacingAndGlyphs' data-word='prosperity' data-count='71'>prosperity</text>
+<text class='w' transform='translate(1229.1,14.8)' font-size='15' fill='#59a14f' textLength='63.4' lengthAdjust='spacingAndGlyphs' data-word='measures' data-count='70'>measures</text>
+<text class='w' transform='translate(156.5,327.1)' font-size='15' fill='#edc948' textLength='41.8' lengthAdjust='spacingAndGlyphs' data-word='object' data-count='70'>object</text>
+<text class='w' transform='translate(1458.7,500.0)' font-size='15' fill='#b07aa1' textLength='32.2' lengthAdjust='spacingAndGlyphs' data-word='form' data-count='69'>form</text>
+<text class='w' transform='translate(1062.7,584.1)' font-size='15' fill='#ff9da7' textLength='21.3' lengthAdjust='spacingAndGlyphs' data-word='full' data-count='69'>full</text>
+<text class='w' transform='translate(223.1,210.1)' font-size='15' fill='#9c755f' textLength='53.7' lengthAdjust='spacingAndGlyphs' data-word='promise' data-count='68'>promise</text>
+<text class='w' transform='translate(112.1,725.1)' font-size='15' fill='#bab0ac' textLength='57.0' lengthAdjust='spacingAndGlyphs' data-word='business' data-count='67'>business</text>
+<text class='w' transform='translate(1174.1,19.1)' font-size='15' fill='#4e79a7' textLength='39.7' lengthAdjust='spacingAndGlyphs' data-word='honor' data-count='67'>honor</text>
+<text class='w' transform='translate(169.6,109.1)' font-size='15' fill='#f28e2b' textLength='53.2' lengthAdjust='spacingAndGlyphs' data-word='security' data-count='67'>security</text>
+<text class='w' transform='translate(230.8,557.0)' font-size='15' fill='#e15759' textLength='31.8' lengthAdjust='spacingAndGlyphs' data-word='trust' data-count='66'>trust</text>
+<text class='w' transform='translate(257.9,438.1)' font-size='15' fill='#76b7b2' textLength='43.7' lengthAdjust='spacingAndGlyphs' data-word='whose' data-count='66'>whose</text>
+<text class='w' transform='translate(795.5,429.1)' font-size='15' fill='#59a14f' textLength='62.9' lengthAdjust='spacingAndGlyphs' data-word='character' data-count='65'>character</text>
+<text class='w' transform='translate(1393.5,611.1)' font-size='15' fill='#edc948' textLength='35.3' lengthAdjust='spacingAndGlyphs' data-word='earth' data-count='65'>earth</text>
+<text class='w' transform='translate(998.6,203.1)' font-size='15' fill='#b07aa1' textLength='36.1' lengthAdjust='spacingAndGlyphs' data-word='given' data-count='65'>given</text>
+<text class='w' transform='translate(911.5,366.8)' font-size='15' fill='#ff9da7' textLength='69.8' lengthAdjust='spacingAndGlyphs' data-word='commerce' data-count='64'>commerce</text>
+<text class='w' transform='translate(822.5,626.1)' font-size='15' fill='#9c755f' textLength='25.0' lengthAdjust='spacingAndGlyphs' data-word='end' data-count='64'>end</text>
+<text class='w' transform='translate(997.3,49.1)' font-size='15' fill='#bab0ac' textLength='66.3' lengthAdjust='spacingAndGlyphs' data-word='important' data-count='64'>important</text>
+<text class='w' transform='translate(421.3,408.1)' font-size='15' fill='#4e79a7' textLength='61.5' lengthAdjust='spacingAndGlyphs' data-word='influence' data-count='64'>influence</text>
+<text class='w' transform='translate(219.1,609.8)' font-size='15' fill='#f28e2b' textLength='44.9' lengthAdjust='spacingAndGlyphs' data-word='proper' data-count='64'>proper</text>
+<text class='w' transform='translate(890.8,128.0)' font-size='15' fill='#e15759' textLength='27.6' lengthAdjust='spacingAndGlyphs' data-word='true' data-count='64'>true</text>
+<text class='w' transform='translate(676.5,427.4)' font-size='14' fill='#76b7b2' textLength='74.4' lengthAdjust='spacingAndGlyphs' data-word='opportunity' data-count='63'>opportunity</text>
+<text class='w' transform='translate(1150.9,650.4)' font-size='14' fill='#59a14f' textLength='29.7' lengthAdjust='spacingAndGlyphs' data-word='view' data-count='63'>view</text>
+<text class='w' transform='translate(603.5,790.4)' font-size='14' fill='#edc948' textLength='50.2' lengthAdjust='spacingAndGlyphs' data-word='children' data-count='62'>children</text>
+<text class='w' transform='translate(1344.5,241.3)' font-size='14' fill='#b07aa1' textLength='41.5' lengthAdjust='spacingAndGlyphs' data-word='course' data-count='62'>course</text>
+<text class='w' transform='translate(645.7,336.4)' font-size='14' fill='#ff9da7' textLength='36.8' lengthAdjust='spacingAndGlyphs' data-word='found' data-count='62'>found</text>
+<text class='w' transform='translate(545.1,264.4)' font-size='14' fill='#9c755f' textLength='26.4' lengthAdjust='spacingAndGlyphs' data-word='love' data-count='62'>love</text>
+<text class='w' transform='translate(442.1,138.4)' font-size='14' fill='#bab0ac' textLength='54.1' lengthAdjust='spacingAndGlyphs' data-word='relations' data-count='61'>relations</text>
+<text class='w' transform='translate(9.5,209.4)' font-size='14' fill='#4e79a7' textLength='36.2' lengthAdjust='spacingAndGlyphs' data-word='called' data-count='60'>called</text>
+<text class='w' transform='translate(1563.5,350.4)' font-size='14' fill='#f28e2b' textLength='28.3' lengthAdjust='spacingAndGlyphs' data-word='oath' data-count='60'>oath</text>
+<text class='w' transform='translate(804.5,190.4)' font-size='14' fill='#e15759' textLength='68.4' lengthAdjust='spacingAndGlyphs' data-word='obligations' data-count='60'>obligations</text>
+<text class='w' transform='translate(811.6,353.6)' font-size='13' fill='#76b7b2' textLength='65.2' lengthAdjust='spacingAndGlyphs' data-word='community' data-count='59'>community</text>
+<text class='w' transform='translate(1241.2,102.6)' font-size='13' fill='#59a14f' textLength='41.6' lengthAdjust='spacingAndGlyphs' data-word='require' data-count='59'>require</text>
+<text class='w' transform='translate(1018.5,132.7)' font-size='13' fill='#edc948' textLength='29.1' lengthAdjust='spacingAndGlyphs' data-word='done' data-count='58'>done</text>
+<text class='w' transform='translate(153.2,660.7)' font-size='13' fill='#b07aa1' textLength='29.6' lengthAdjust='spacingAndGlyphs' data-word='meet' data-count='58'>meet</text>
+<text class='w' transform='translate(996.2,343.7)' font-size='13' fill='#ff9da7' textLength='28.9' lengthAdjust='spacingAndGlyphs' data-word='mind' data-count='58'>mind</text>
+<text class='w' transform='translate(209.2,572.6)' font-size='13' fill='#9c755f' textLength='60.7' lengthAdjust='spacingAndGlyphs' data-word='protection' data-count='58'>protection</text>
+<text class='w' transform='translate(122.2,793.8)' font-size='13' fill='#bab0ac' textLength='56.1' lengthAdjust='spacingAndGlyphs' data-word='resources' data-count='58'>resources</text>
+<text class='w' transform='translate(818.7,574.7)' font-size='13' fill='#4e79a7' textLength='37.1' lengthAdjust='spacingAndGlyphs' data-word='strong' data-count='58'>strong</text>
+<text class='w' transform='translate(1088.6,256.6)' font-size='13' fill='#f28e2b' textLength='50.8' lengthAdjust='spacingAndGlyphs' data-word='continue' data-count='57'>continue</text>
+<text class='w' transform='translate(979.2,586.7)' font-size='13' fill='#e15759' textLength='24.9' lengthAdjust='spacingAndGlyphs' data-word='help' data-count='57'>help</text>
+<text class='w' transform='translate(810.2,561.7)' font-size='13' fill='#76b7b2' textLength='29.5' lengthAdjust='spacingAndGlyphs' data-word='labor' data-count='57'>labor</text>
+<text class='w' transform='translate(1151.2,144.7)' font-size='13' fill='#59a14f' textLength='22.4' lengthAdjust='spacingAndGlyphs' data-word='rule' data-count='57'>rule</text>
+<text class='w' transform='translate(15.2,186.7)' font-size='13' fill='#edc948' textLength='29.7' lengthAdjust='spacingAndGlyphs' data-word='bring' data-count='56'>bring</text>
+<text class='w' transform='translate(1378.5,650.7)' font-size='13' fill='#b07aa1' textLength='45.9' lengthAdjust='spacingAndGlyphs' data-word='defense' data-count='56'>defense</text>
+<text class='w' transform='translate(1379.7,629.7)' font-size='13' fill='#ff9da7' textLength='41.9' lengthAdjust='spacingAndGlyphs' data-word='greater' data-count='56'>greater</text>
+<text class='w' transform='translate(1475.2,609.7)' font-size='13' fill='#9c755f' textLength='24.5' lengthAdjust='spacingAndGlyphs' data-word='past' data-count='56'>past</text>
+<text class='w' transform='translate(1268.6,238.7)' font-size='13' fill='#bab0ac' textLength='23.0' lengthAdjust='spacingAndGlyphs' data-word='civil' data-count='55'>civil</text>
+<text class='w' transform='translate(1289.2,351.7)' font-size='13' fill='#4e79a7' textLength='25.1' lengthAdjust='spacingAndGlyphs' data-word='look' data-count='55'>look</text>
+<text class='w' transform='translate(101.7,109.8)' font-size='13' fill='#f28e2b' textLength='32.6' lengthAdjust='spacingAndGlyphs' data-word='sense' data-count='55'>sense</text>
+<text class='w' transform='translate(1188.8,347.7)' font-size='13' fill='#e15759' textLength='24.1' lengthAdjust='spacingAndGlyphs' data-word='task' data-count='55'>task</text>
+<text class='w' transform='translate(1088.8,297.6)' font-size='13' fill='#76b7b2' textLength='48.8' lengthAdjust='spacingAndGlyphs' data-word='territory' data-count='55'>territory</text>
+<text class='w' transform='translate(504.6,463.7)' font-size='13' fill='#59a14f' textLength='79.9' lengthAdjust='spacingAndGlyphs' data-word='constitutional' data-count='54'>constitutional</text>
+<text class='w' transform='translate(45.6,668.8)' font-size='13' fill='#edc948' textLength='53.2' lengthAdjust='spacingAndGlyphs' data-word='economy' data-count='54'>economy</text>
+<text class='w' transform='translate(37.6,791.9)' font-size='12' fill='#b07aa1' textLength='58.8' lengthAdjust='spacingAndGlyphs' data-word='experience' data-count='54'>experience</text>
+<text class='w' transform='translate(1194.8,234.8)' font-size='12' fill='#ff9da7' textLength='21.3' lengthAdjust='spacingAndGlyphs' data-word='fear' data-count='54'>fear</text>
+<text class='w' transform='translate(555.6,235.9)' font-size='12' fill='#9c755f' textLength='38.3' lengthAdjust='spacingAndGlyphs' data-word='control' data-count='53'>control</text>
+<text class='w' transform='translate(711.6,101.0)' font-size='12' fill='#bab0ac' textLength='64.7' lengthAdjust='spacingAndGlyphs' data-word='countrymen' data-count='53'>countrymen</text>
+<text class='w' transform='translate(1078.6,443.9)' font-size='12' fill='#4e79a7' textLength='48.2' lengthAdjust='spacingAndGlyphs' data-word='demands' data-count='53'>demands</text>
+<text class='w' transform='translate(703.7,565.4)' font-size='10' fill='#f28e2b' textLength='56.7' lengthAdjust='spacingAndGlyphs' data-word='departments' data-count='53'>departments</text>
+<text class='w' transform='translate(621.4,14.4)' font-size='10' fill='#e15759' textLength='25.3' lengthAdjust='spacingAndGlyphs' data-word='result' data-count='53'>result</text>
+<text class='w' transform='translate(1559.8,566.2)' font-size='10' fill='#76b7b2' textLength='33.8' lengthAdjust='spacingAndGlyphs' data-word='success' data-count='53'>success</text>
+<text class='w' transform='translate(57.8,58.4)' font-size='10' fill='#59a14f' textLength='30.9' lengthAdjust='spacingAndGlyphs' data-word='friends' data-count='52'>friends</text>
+<text class='w' transform='translate(451.4,354.4)' font-size='10' fill='#edc948' textLength='44.4' lengthAdjust='spacingAndGlyphs' data-word='happiness' data-count='52'>happiness</text>
+<text class='w' transform='translate(1264.4,671.2)' font-size='10' fill='#b07aa1' textLength='19.0' lengthAdjust='spacingAndGlyphs' data-word='race' data-count='52'>race</text>
+<text class='w' transform='translate(899.8,530.4)' font-size='10' fill='#ff9da7' textLength='23.5' lengthAdjust='spacingAndGlyphs' data-word='trade' data-count='52'>trade</text>
+<text class='w' transform='translate(380.4,522.4)' font-size='10' fill='#9c755f' textLength='40.1' lengthAdjust='spacingAndGlyphs' data-word='blessings' data-count='51'>blessings</text>
+<text class='w' transform='translate(11.7,137.4)' font-size='10' fill='#bab0ac' textLength='40.6' lengthAdjust='spacingAndGlyphs' data-word='domestic' data-count='51'>domestic</text>
+<text class='w' transform='translate(1096.4,402.7)' font-size='10' fill='#4e79a7' textLength='37.2' lengthAdjust='spacingAndGlyphs' data-word='moment' data-count='51'>moment</text>
+<text class='w' transform='translate(566.4,302.4)' font-size='10' fill='#f28e2b' textLength='28.8' lengthAdjust='spacingAndGlyphs' data-word='regard' data-count='51'>regard</text>
+<text class='w' transform='translate(385.8,543.4)' font-size='10' fill='#e15759' textLength='35.4' lengthAdjust='spacingAndGlyphs' data-word='thought' data-count='51'>thought</text>
+<text class='w' transform='translate(912.9,311.4)' font-size='10' fill='#76b7b2' textLength='27.6' lengthAdjust='spacingAndGlyphs' data-word='words' data-count='51'>words</text>
+<text class='w' transform='translate(544.8,366.4)' font-size='10' fill='#59a14f' textLength='14.8' lengthAdjust='spacingAndGlyphs' data-word='ask' data-count='50'>ask</text>
+<text class='w' transform='translate(311.7,312.4)' font-size='10' fill='#edc948' textLength='50.0' lengthAdjust='spacingAndGlyphs' data-word='differences' data-count='50'>differences</text>
+<text class='w' transform='translate(817.7,644.4)' font-size='10' fill='#b07aa1' textLength='37.5' lengthAdjust='spacingAndGlyphs' data-word='example' data-count='50'>example</text>
+<text class='w' transform='translate(1061.4,623.4)' font-size='10' fill='#ff9da7' textLength='38.6' lengthAdjust='spacingAndGlyphs' data-word='maintain' data-count='50'>maintain</text>
+<text class='w' transform='translate(1445.4,67.4)' font-size='10' fill='#9c755f' textLength='41.2' lengthAdjust='spacingAndGlyphs' data-word='members' data-count='50'>members</text>
+<text class='w' transform='translate(1560.4,711.4)' font-size='10' fill='#bab0ac' textLength='25.4' lengthAdjust='spacingAndGlyphs' data-word='moral' data-count='50'>moral</text>
+<text class='w' transform='translate(828.7,233.4)' font-size='10' fill='#4e79a7' textLength='14.9' lengthAdjust='spacingAndGlyphs' data-word='call' data-count='49'>call</text>
+<text class='w' transform='translate(980.8,612.4)' font-size='10' fill='#f28e2b' textLength='24.3' lengthAdjust='spacingAndGlyphs' data-word='alone' data-count='48'>alone</text>
+<text class='w' transform='translate(391.7,18.4)' font-size='10' fill='#e15759' textLength='43.0' lengthAdjust='spacingAndGlyphs' data-word='economic' data-count='48'>economic</text>
+<text class='w' transform='translate(293.7,35.4)' font-size='10' fill='#76b7b2' textLength='26.4' lengthAdjust='spacingAndGlyphs' data-word='effect' data-count='48'>effect</text>
+<text class='w' transform='translate(1145.5,521.4)' font-size='10' fill='#59a14f' textLength='36.6' lengthAdjust='spacingAndGlyphs' data-word='industry' data-count='48'>industry</text>
+<text class='w' transform='translate(889.4,142.4)' font-size='10' fill='#edc948' textLength='34.2' lengthAdjust='spacingAndGlyphs' data-word='millions' data-count='48'>millions</text>
+<text class='w' transform='translate(910.4,229.2)' font-size='10' fill='#b07aa1' textLength='38.8' lengthAdjust='spacingAndGlyphs' data-word='preserve' data-count='48'>preserve</text>
+<text class='w' transform='translate(558.4,448.4)' font-size='10' fill='#ff9da7' textLength='30.7' lengthAdjust='spacingAndGlyphs' data-word='remain' data-count='48'>remain</text>
+<text class='w' transform='translate(1051.7,768.4)' font-size='10' fill='#9c755f' textLength='32.6' lengthAdjust='spacingAndGlyphs' data-word='destiny' data-count='47'>destiny</text>
+<text class='w' transform='translate(1542.8,694.4)' font-size='10' fill='#bab0ac' textLength='18.8' lengthAdjust='spacingAndGlyphs' data-word='face' data-count='47'>face</text>
+</g></svg>
+</div>
+</main>
+<aside id='panel' aria-label='Explore the word cloud'></aside>
+<div id='tt'></div>
+<div id='credit'>calligram.ado &nbsp;&middot;&nbsp; 200 words</div>
+<script>window.WC_CONFIG={toolbar:1,fixed:0,light:0,bg:'#16213e',ink:'#eeeeee',stem:'15_online'};</script>
+<script>
+/* calligram interactive layer (v2.3)
+ * Inlined into the HTML page by calligram.ado. Works on the page's
+ * .pane > svg.wc > .w elements: a <g> with the word's exact letter outlines
+ * (the default) or a <text> (online option). The layout itself never changes.
+ *
+ * Right-hand panel with two states:
+ *   open  - labelled sections: search, minimum count, top words, view,
+ *           appearance, save
+ *   rail  - a narrow column of icons with a vertical slider
+ * Plus: hover card (count, rank, share) with hover focus, click to hide,
+ * zoom/pan, fullscreen, light/dark, palettes, by() tabs, a gentle load
+ * animation and keyboard shortcuts (press ? for the list).
+ */
+(function () {
+  'use strict';
+  var cfg = window.WC_CONFIG || {};
+  var panes = Array.prototype.slice.call(document.querySelectorAll('.pane'));
+  if (!panes.length) return;
+  var doc = document, body = doc.body;
+  var stage = doc.getElementById('stage');
+  var tt = doc.getElementById('tt');
+  var panelEl = doc.getElementById('panel');
+  var tabsEl = doc.getElementById('tabs');
+  var countEl = doc.getElementById('nw');
+  var state = { active: 0, query: '', theme: 'orig', palette: 'orig', listAll: false };
+  var drag = null, ui = {}, sliders = [];
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var PALETTES = [
+    { id: 'orig', name: 'As drawn' },
+    { id: 'tableau', name: 'Tableau 10', colors: ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'], cycle: true },
+    { id: 'viridis', name: 'Viridis', colors: ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'] },
+    { id: 'warm', name: 'Warm', colors: ['#9d0208', '#e85d04', '#ffba08'] },
+    { id: 'cool', name: 'Cool', colors: ['#023e8a', '#0096c7', '#48cae4', '#90e0ef'] },
+    { id: 'greys', name: 'Greys' }
+  ];
+  var THEMES = {
+    orig: { bg: cfg.bg || '#16213e', ink: cfg.ink || '#eeeeee' },
+    alt: cfg.light ? { bg: '#16213e', ink: '#eeeeee' } : { bg: '#ffffff', ink: '#222222' }
+  };
+
+  // ── icons (24x24, drawn with lines) ──────────────────────────────────────
+  var ICON = {
+    search: '<circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>',
+    left: '<polyline points="15 6 9 12 15 18"/>',
+    right: '<polyline points="9 6 15 12 9 18"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    theme: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/>',
+    palette: '<circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1.6" fill="currentColor"/><circle cx="12" cy="7.5" r="1.6" fill="currentColor"/><circle cx="16" cy="10" r="1.6" fill="currentColor"/><circle cx="14.5" cy="15" r="1.6" fill="currentColor"/>',
+    plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    minus: '<line x1="5" y1="12" x2="19" y2="12"/>',
+    reset: '<path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 8.5 8.5 8.5"/>',
+    full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    save: '<path d="M12 4v11"/><polyline points="7 10.5 12 15.5 17 10.5"/><line x1="5" y1="20" x2="19" y2="20"/>',
+    help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .9-1 1.6"/><circle cx="12" cy="17" r=".6" fill="currentColor"/>'
+  };
+  function svgIcon(name) {
+    return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[name] + '</svg>';
+  }
+
+  // ── small helpers ─────────────────────────────────────────────────────────
+  function make(tag, props, text) {
+    var e = doc.createElement(tag);
+    if (props) for (var k in props) e.setAttribute(k, props[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function iconButton(name, title, onClick) {
+    var b = make('button', { type: 'button', 'class': 'ib', title: title, 'aria-label': title });
+    b.innerHTML = svgIcon(name);
+    b.addEventListener('click', onClick);
+    return b;
+  }
+  function rgb(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+  }
+  function hex2(v) { var s = Math.round(v).toString(16); return s.length < 2 ? '0' + s : s; }
+  function interp(stops, t) {
+    if (stops.length === 1) return stops[0];
+    var x = t * (stops.length - 1), i = Math.min(Math.floor(x), stops.length - 2), f = x - i;
+    var a = rgb(stops[i]), b = rgb(stops[i + 1]);
+    return '#' + hex2(a[0] + f * (b[0] - a[0])) + hex2(a[1] + f * (b[1] - a[1])) + hex2(a[2] + f * (b[2] - a[2]));
+  }
+  function isLight(c) {
+    if (!/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(c)) return false;
+    var v = rgb(c);
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2] > 127.5;
+  }
+  function pane() { return panes[state.active]; }
+  /** the word element an event landed on (its hover box or letters, or a <text>) */
+  function wordOf(t) {
+    if (!t || t.nodeType !== 1) return null;
+    if (t.classList && t.classList.contains('w')) return t;
+    return t.closest ? t.closest('.w') : null;
+  }
+  function typing(ev) { var t = ev.target; return t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA'); }
+
+  // ── per-pane setup ────────────────────────────────────────────────────────
+  panes.forEach(function (p) {
+    var svg = p.querySelector('svg.wc');
+    p._svg = svg;
+    p._W = +svg.getAttribute('width');
+    p._H = +svg.getAttribute('height');
+    p._words = Array.prototype.slice.call(svg.querySelectorAll('.w'));
+    p._max = 1;
+    p._total = 0;
+    p._words.forEach(function (w, i) {
+      w.setAttribute('data-fill0', w.getAttribute('fill'));
+      w.setAttribute('data-rank', i + 1);
+      var c = +w.getAttribute('data-count');
+      p._total += c;
+      if (c > p._max) p._max = c;
+    });
+    p._thr = 1;
+    p._rv = [0, 0, p._W, p._H];        // home view: the whole cloud (widened to the area's shape by fit)
+    // the category key: clicking an entry hides or shows that group's words
+    p._offCats = {};
+    Array.prototype.forEach.call(p.querySelectorAll('.legend .sw[data-cat]'), function (sw) {
+      sw.setAttribute('role', 'button');
+      sw.setAttribute('tabindex', '0');
+      sw.setAttribute('aria-pressed', 'false');
+      sw.title = 'Click to hide or show these words';
+      var toggle = function () {
+        var k = sw.getAttribute('data-cat');
+        if (p._offCats[k]) delete p._offCats[k]; else p._offCats[k] = 1;
+        sw.classList.toggle('off', !!p._offCats[k]);
+        sw.setAttribute('aria-pressed', p._offCats[k] ? 'true' : 'false');
+        apply();
+      };
+      sw.addEventListener('click', toggle);
+      sw.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggle(); } });
+    });
+    p._vb = p._rv.slice();
+    setupPointer(p);
+  });
+
+  // ── hover card and hover focus ────────────────────────────────────────────
+  function focusWord(w, on) {
+    var svg = w.ownerSVGElement;
+    if (!svg) return;
+    svg.classList.toggle('focusing', on);
+    w.classList.toggle('hot', on);
+  }
+  function showCard(w, x, y) {
+    if (!tt) return;
+    var p = pane(), c = +w.getAttribute('data-count');
+    var share = p._total > 0 ? (100 * c / p._total) : 0;
+    tt.innerHTML = '';
+    tt.appendChild(make('div', { 'class': 'tw' }, w.getAttribute('data-word')));
+    tt.appendChild(make('div', null, 'Count ' + fullCount(c) + '  \u00b7  rank ' + w.getAttribute('data-rank') + ' of ' + p._words.length));
+    tt.appendChild(make('div', null, (share < 0.1 ? share.toFixed(2) : share.toFixed(1)) + '% of all word mentions shown'));
+    var note = w.getAttribute('data-note');
+    if (note) tt.appendChild(make('div', { 'class': 'tn' }, note));
+    if (cfg.toolbar) tt.appendChild(make('div', { 'class': 'th' }, 'Click to hide'));
+    tt.style.display = 'block';
+    var r = tt.getBoundingClientRect();
+    var left = x + 16, top = y + 16;
+    if (left + r.width > window.innerWidth - 8) left = x - r.width - 16;
+    if (top + r.height > window.innerHeight - 8) top = y - r.height - 16;
+    tt.style.left = left + 'px';
+    tt.style.top = top + 'px';
+  }
+  function hideCard() { if (tt) tt.style.display = 'none'; }
+  var hot = null;
+  doc.addEventListener('mousemove', function (ev) {
+    var t = drag ? null : wordOf(ev.target);
+    var isWord = !!t;
+    if (isWord) {
+      if (hot !== t) { if (hot) focusWord(hot, false); hot = t; focusWord(t, true); }
+      showCard(t, ev.clientX, ev.clientY);
+    } else {
+      if (hot) { focusWord(hot, false); hot = null; }
+      hideCard();
+    }
+  });
+
+  // ── fit the cloud into the space left by the header and panel ─────────────
+  function fit() {
+    var p = pane(), svg = p._svg;
+    if (cfg.fixed || !stage) { svg.style.width = ''; svg.style.height = ''; return; }
+    var lab = p.querySelector('.plabel');
+    var labH = (lab && lab.offsetParent !== null) ? lab.offsetHeight + 12 : 0;
+    var lg = p.querySelector('.legend');
+    var lgH = (lg && lg.offsetParent !== null) ? lg.offsetHeight + 10 : 0;
+    var availW = stage.clientWidth - 24, availH = stage.clientHeight - 24 - labH - lgH;
+    if (availW <= 0 || availH <= 0) return;
+    // the cloud's box fills the whole area, so a zoomed cloud can use all of it;
+    // the home view shows the whole cloud, centred, with the area's proportions
+    var bw = Math.floor(availW), bh = Math.floor(availH);
+    svg.style.width = bw + 'px';
+    svg.style.height = bh + 'px';
+    var A = bw / bh;
+    if (A > p._W / p._H) { var vw = p._H * A; p._rv = [(p._W - vw) / 2, 0, vw, p._H]; }
+    else { var vh = p._W / A; p._rv = [0, (p._H - vh) / 2, p._W, vh]; }
+    p._vb = p._rv.slice();
+    setVB(p);
+  }
+  window.addEventListener('resize', fit);
+  // fixed: the cloud keeps its size and the page scrolls; the panel stays in view
+  // with the height of the window below its top edge, and scrolls inside
+  function sizePanel() {
+    if (!cfg.fixed || !panelEl) return;
+    var t = Math.max(0, panelEl.getBoundingClientRect().top);
+    panelEl.style.height = Math.max(120, window.innerHeight - t) + 'px';
+  }
+  window.addEventListener('resize', sizePanel);
+  window.addEventListener('scroll', sizePanel, { passive: true });
+  window.addEventListener('load', sizePanel);
+  doc.addEventListener('fullscreenchange', function () { setTimeout(fit, 50); });
+
+  // ── load animation: words fade in, largest first ──────────────────────────
+  // Runs on first paint and every time a group's tab is shown. Uses the Web
+  // Animations API so it can be cancelled and restarted cleanly; 'backwards'
+  // fill keeps each word hidden only until its turn, after which normal
+  // styles (search dimming, hiding) apply again.
+  function enter(p) {
+    if (p._anims) p._anims.forEach(function (a) { try { a.cancel(); } catch (e) { /* ignore */ } });
+    p._anims = [];
+    if (reduceMotion || !p._words.length || typeof p._words[0].animate !== 'function') return;
+    var vis = p._words.filter(function (w) { return w.style.display !== 'none'; });
+    // large clouds fade in as one picture: animating hundreds of words one by one
+    // makes the browser redraw them all on every frame
+    if (vis.length > 300 && typeof p._svg.animate === 'function') {
+      p._anims.push(p._svg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, easing: 'ease-out', fill: 'backwards' }));
+      return;
+    }
+    var n = vis.length, step = Math.min(18, 900 / Math.max(n, 1));
+    vis.forEach(function (w, i) {
+      p._anims.push(w.animate([{ opacity: 0 }, { opacity: 1 }],
+        { duration: 550, delay: Math.round(i * step), easing: 'ease-out', fill: 'backwards' }));
+    });
+  }
+
+  // ── show / hide / dim words, and refresh the panel ────────────────────────
+  function visible(w, p) {
+    return w.getAttribute('data-hidden') !== '1' && (+w.getAttribute('data-count')) >= p._thr &&
+      !(p._offCats && p._offCats[w.getAttribute('data-cat')]);
+  }
+  function apply() {
+    var p = pane(), q = state.query.toLowerCase();
+    var shown = 0, hits = 0, hidden = 0;
+    p._words.forEach(function (w) {
+      if (w.getAttribute('data-hidden') === '1') hidden++;
+      var vis = visible(w, p);
+      w.style.display = vis ? '' : 'none';
+      var hit = q !== '' && w.getAttribute('data-word').toLowerCase().indexOf(q) >= 0;
+      w.style.opacity = (vis && q !== '' && !hit) ? '0.12' : '';
+      if (vis) { shown++; if (hit) hits++; }
+    });
+    if (ui.hits) ui.hits.textContent = q === '' ? '' : hits + (hits === 1 ? ' match' : ' matches');
+    sliders.forEach(function (s) { if (+s.value !== p._thr) s.value = p._thr; });
+    if (ui.thrLabel) ui.thrLabel.textContent = '\u2265 ' + p._thr;
+    if (ui.railThr) ui.railThr.textContent = '\u2265' + p._thr;
+    if (ui.unhide) {
+      ui.unhide.textContent = hidden ? 'Show hidden words (' + hidden + ')' : 'No hidden words';
+      ui.unhide.disabled = hidden === 0;
+    }
+    if (ui.railEye) {
+      ui.railEye.disabled = hidden === 0;
+      ui.railEye.setAttribute('data-badge', hidden ? String(hidden) : '');
+    }
+    if (countEl) countEl.textContent = shown === p._words.length ? shown + ' words' : shown + ' of ' + p._words.length + ' words shown';
+    renderList();
+  }
+
+  // ── top words list ────────────────────────────────────────────────────────
+  // counts for the list: large ones short (18.8M), full value in the tooltip
+  function shortCount(c) {
+    var a = Math.abs(c);
+    var f = function (v, u) { return (Math.round(v * 10) / 10).toString() + u; };
+    if (a >= 1e9) return f(c / 1e9, 'B');
+    if (a >= 1e6) return f(c / 1e6, 'M');
+    if (a >= 1e4) return f(c / 1e3, 'k');
+    return String(c);
+  }
+  function fullCount(c) { return Math.abs(c) >= 1000 ? c.toLocaleString('en-US') : String(c); }
+  function renderList() {
+    if (!ui.list) return;
+    var p = pane(), q = state.query.toLowerCase();
+    var rows = p._words.filter(function (w) {
+      return q === '' || w.getAttribute('data-word').toLowerCase().indexOf(q) >= 0;
+    });
+    var limit = state.listAll ? rows.length : Math.min(rows.length, 15);
+    ui.list.innerHTML = '';
+    for (var i = 0; i < limit; i++) {
+      (function (w) {
+        var c = +w.getAttribute('data-count');
+        var row = make('li', { 'class': 'row', title: 'Click to ' + (w.getAttribute('data-hidden') === '1' ? 'show' : 'hide') + ' this word' });
+        if (!visible(w, p)) row.classList.add('off');
+        row.appendChild(make('span', { 'class': 'rk' }, w.getAttribute('data-rank')));
+        row.appendChild(make('span', { 'class': 'nm' }, w.getAttribute('data-word')));
+        var barWrap = make('span', { 'class': 'bw' });
+        var bar = make('span', { 'class': 'bar' });
+        bar.style.width = Math.max(3, Math.round(100 * c / p._max)) + '%';
+        bar.style.background = w.getAttribute('fill');
+        barWrap.appendChild(bar);
+        row.appendChild(barWrap);
+        row.appendChild(make('span', { 'class': 'ct', title: fullCount(c) }, shortCount(c)));
+        row.addEventListener('mouseenter', function () { if (visible(w, p)) focusWord(w, true); });
+        row.addEventListener('mouseleave', function () { focusWord(w, false); });
+        row.addEventListener('click', function () {
+          focusWord(w, false);
+          if (w.getAttribute('data-hidden') === '1') w.removeAttribute('data-hidden');
+          else w.setAttribute('data-hidden', '1');
+          apply();
+        });
+        ui.list.appendChild(row);
+      })(rows[i]);
+    }
+    if (ui.more) {
+      ui.more.style.display = rows.length > 15 ? '' : 'none';
+      ui.more.textContent = state.listAll ? 'Show top 15' : 'Show all ' + rows.length;
+    }
+  }
+
+  // ── zoom and pan (by changing the SVG viewBox) ────────────────────────────
+  function isZoomed(p) { return p._vb[2] < p._rv[2] - 0.5; }
+  function setVB(p) {
+    p._svg.setAttribute('viewBox', p._vb.map(function (v) { return Math.round(v * 100) / 100; }).join(' '));
+    p._svg.classList.toggle('zoomed', isZoomed(p));
+  }
+  // keep the cloud in view: along a direction where the view is wider than the
+  // cloud, the cloud stays centred; otherwise the view stays inside the cloud
+  function clampVB(p, x, y, w, h) {
+    x = w >= p._W ? (p._W - w) / 2 : Math.min(Math.max(0, x), p._W - w);
+    y = h >= p._H ? (p._H - h) / 2 : Math.min(Math.max(0, y), p._H - h);
+    p._vb = [x, y, w, h];
+    setVB(p);
+  }
+  function zoomAt(p, cx, cy, k) {
+    var v = p._vb, r = p._rv;
+    var w = Math.min(r[2], Math.max(r[2] / 10, v[2] * k)), h = w * r[3] / r[2];
+    clampVB(p, cx - (cx - v[0]) * (w / v[2]), cy - (cy - v[1]) * (h / v[3]), w, h);
+  }
+  function zoomCentre(k) { var p = pane(), v = p._vb; zoomAt(p, v[0] + v[2] / 2, v[1] + v[3] / 2, k); }
+  function zoomReset() { var p = pane(); p._vb = p._rv.slice(); setVB(p); }
+  function svgPoint(p, ev) {
+    var r = p._svg.getBoundingClientRect(), v = p._vb;
+    return [v[0] + (ev.clientX - r.left) / r.width * v[2], v[1] + (ev.clientY - r.top) / r.height * v[3]];
+  }
+  function setupPointer(p) {
+    var svg = p._svg;
+    if (!cfg.toolbar) return;
+    svg.addEventListener('wheel', function (ev) {
+      ev.preventDefault();
+      var pt = svgPoint(p, ev);
+      zoomAt(p, pt[0], pt[1], ev.deltaY < 0 ? 1 / 1.2 : 1.2);
+    }, { passive: false });
+    svg.addEventListener('pointerdown', function (ev) {
+      drag = { x: ev.clientX, y: ev.clientY, vb: p._vb.slice(), moved: false, target: wordOf(ev.target) };
+      if (svg.setPointerCapture && ev.pointerId != null) { try { svg.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ } }
+    });
+    svg.addEventListener('pointermove', function (ev) {
+      if (!drag) return;
+      var dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+      if (drag.moved && isZoomed(p)) {
+        var r = svg.getBoundingClientRect();
+        clampVB(p, drag.vb[0] - dx / r.width * drag.vb[2], drag.vb[1] - dy / r.height * drag.vb[3], drag.vb[2], drag.vb[3]);
+        svg.classList.add('dragging');
+      }
+    });
+    svg.addEventListener('pointerup', function () {
+      // a click (no drag) on a word hides it
+      if (drag && !drag.moved && drag.target) {
+        focusWord(drag.target, false);
+        drag.target.setAttribute('data-hidden', '1');
+        hideCard();
+        apply();
+      }
+      drag = null;
+      svg.classList.remove('dragging');
+    });
+  }
+
+  // ── theme and palette ─────────────────────────────────────────────────────
+  function setTheme(t) {
+    state.theme = t;
+    var th = THEMES[t];
+    body.style.setProperty('--bg', th.bg);
+    body.style.setProperty('--ink', th.ink);
+    body.classList.toggle('light', isLight(th.bg));
+    panes.forEach(function (p) {
+      var r = p._svg.querySelector('rect.bg');
+      if (r) r.setAttribute('fill', th.bg);
+      var o = p._svg.querySelector('path.outline');
+      if (o && o.getAttribute('data-default') === '1') o.setAttribute('stroke', th.ink);
+    });
+    if (ui.themeBtn) ui.themeBtn.textContent = isLight(th.bg) ? 'Dark background' : 'Light background';
+    if (state.palette === 'greys') setPalette('greys');
+  }
+  function paletteColor(id, i, n) {
+    var pal = PALETTES.filter(function (q) { return q.id === id; })[0];
+    if (pal.cycle) return pal.colors[i % pal.colors.length];
+    var stops = id === 'greys' ? (isLight(THEMES[state.theme].bg) ? ['#111111', '#8a8a8a'] : ['#f5f5f5', '#8a8a8a']) : pal.colors;
+    return interp(stops, n > 1 ? i / (n - 1) : 0);
+  }
+  function setPalette(id) {
+    state.palette = id;
+    panes.forEach(function (p) {
+      var n = p._words.length;
+      p._words.forEach(function (w, i) {
+        w.setAttribute('fill', id === 'orig' ? w.getAttribute('data-fill0') : paletteColor(id, i, n));
+      });
+    });
+    if (ui.swatches) ui.swatches.forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-id') === id); });
+    renderList();
+  }
+  function cyclePalette() {
+    if (cfg.fixedcolors) return;          // the colours carry meaning (colorby() etc.)
+    var k = 0;
+    PALETTES.forEach(function (q, i) { if (q.id === state.palette) k = i; });
+    var next = PALETTES[(k + 1) % PALETTES.length];
+    setPalette(next.id);
+    if (ui.railPal) ui.railPal.title = 'Colours: ' + next.name + ' (click for next)';
+  }
+
+  // ── tabs ──────────────────────────────────────────────────────────────────
+  function show(k, animate) {
+    state.active = k;
+    panes.forEach(function (p, i) { p.style.display = i === k ? '' : 'none'; });
+    if (ui.tabs) ui.tabs.forEach(function (b, i) { b.classList.toggle('on', i === k); b.setAttribute('aria-selected', i === k ? 'true' : 'false'); });
+    var p = pane();
+    sliders.forEach(function (s) { s.max = p._max; s.disabled = p._max <= 1; });
+    apply();
+    fit();
+    if (animate) enter(p);
+  }
+
+  // ── fullscreen ────────────────────────────────────────────────────────────
+  function toggleFullscreen() {
+    var el = doc.documentElement;
+    if (!doc.fullscreenElement) { if (el.requestFullscreen) el.requestFullscreen(); }
+    else if (doc.exitFullscreen) doc.exitFullscreen();
+  }
+
+  // ── export what is shown ──────────────────────────────────────────────────
+  function stem() {
+    var s = cfg.stem || 'wordcloud';
+    if (panes.length > 1) s += '_' + (pane().getAttribute('data-file') || (state.active + 1));
+    return s;
+  }
+  // what is saved: the whole cloud at home zoom, else what is shown
+  function saveView(p) {
+    var vb = isZoomed(p) ? p._vb : [0, 0, p._W, p._H];
+    return { vb: vb, w: p._W, h: Math.round(p._W * vb[3] / vb[2]) };
+  }
+  function serialize() {
+    var p = pane(), c = p._svg.cloneNode(true), sv = saveView(p);
+    c.removeAttribute('style');
+    c.removeAttribute('class');
+    c.setAttribute('viewBox', sv.vb.join(' '));
+    c.setAttribute('width', sv.w);
+    c.setAttribute('height', sv.h);
+    c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    Array.prototype.forEach.call(c.querySelectorAll('.w'), function (w) {
+      w.removeAttribute('class');
+      w.style.animationDelay = '';
+    });
+    return new XMLSerializer().serializeToString(c);
+  }
+  function download(href, name) {
+    var a = make('a', { href: href, download: name });
+    body.appendChild(a);
+    a.click();
+    body.removeChild(a);
+  }
+  function save(fmt) {
+    var xml = serialize(), name = stem() + '.' + fmt;
+    if (fmt === 'svg') {
+      var url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml' }));
+      download(url, name);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      return;
+    }
+    var p = pane(), sv = saveView(p), W = sv.w, H = sv.h;
+    var bytes = new TextEncoder().encode(xml), bin = '';
+    for (var i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    var canvas = make('canvas');
+    canvas.width = 2 * W;
+    canvas.height = 2 * H;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = THEMES[state.theme].bg;
+    ctx.fillRect(0, 0, 2 * W, 2 * H);
+    var img = new Image();
+    img.onload = function () {
+      ctx.drawImage(img, 0, 0, 2 * W, 2 * H);
+      download(canvas.toDataURL(fmt === 'jpg' ? 'image/jpeg' : 'image/png', 0.95), name);
+    };
+    img.onerror = function (e) { console.error('calligram: image export failed', e); };
+    img.src = 'data:image/svg+xml;base64,' + btoa(bin);
+  }
+  window.wcSave = save;
+
+  // ── panel open / closed ───────────────────────────────────────────────────
+  function setPanel(open) {
+    if (!panelEl) return;
+    panelEl.classList.toggle('open', open);
+    panelEl.classList.toggle('rail', !open);
+    fit();
+    setTimeout(fit, 260);
+  }
+  function openSearch() {
+    setPanel(true);
+    if (ui.search) { ui.search.focus(); ui.search.select(); }
+  }
+  function unhideAll() {
+    pane()._words.forEach(function (w) { w.removeAttribute('data-hidden'); });
+    apply();
+  }
+  function setThreshold(v) { pane()._thr = +v; apply(); }
+
+  // ── keyboard shortcuts ────────────────────────────────────────────────────
+  var KEYS = [
+    ['/', 'Search'], ['Esc', 'Clear search / close'], ['+  \u2212', 'Zoom in / out'], ['0', 'Reset zoom'],
+    ['F', 'Fullscreen'], ['P', 'Open / collapse panel'], ['T', 'Light / dark background'],
+    ['C', 'Next colour palette'], ['H', 'Show hidden words'], ['\u2190  \u2192', 'Previous / next group'], ['?', 'This list']
+  ];
+  function toggleHelp(force) {
+    if (!ui.help) return;
+    var on = force != null ? force : ui.help.style.display === 'none';
+    ui.help.style.display = on ? 'flex' : 'none';
+  }
+  if (cfg.toolbar) {
+    doc.addEventListener('keydown', function (ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (typing(ev)) {
+        if (ev.key === 'Escape') { ev.target.value = ''; state.query = ''; ev.target.blur(); apply(); }
+        return;
+      }
+      var k = ev.key;
+      if (k === '/') { ev.preventDefault(); openSearch(); }
+      else if (k === 'Escape') { toggleHelp(false); if (state.query) { state.query = ''; if (ui.search) ui.search.value = ''; apply(); } }
+      else if (k === '+' || k === '=') zoomCentre(0.8);
+      else if (k === '-' || k === '_') zoomCentre(1.25);
+      else if (k === '0') zoomReset();
+      else if (k === 'f' || k === 'F') toggleFullscreen();
+      else if (k === 'p' || k === 'P') setPanel(!panelEl.classList.contains('open'));
+      else if (k === 't' || k === 'T') setTheme(state.theme === 'orig' ? 'alt' : 'orig');
+      else if (k === 'c' || k === 'C') cyclePalette();
+      else if (k === 'h' || k === 'H') unhideAll();
+      else if (k === '?') toggleHelp();
+      else if (k === 'ArrowRight' && panes.length > 1) show((state.active + 1) % panes.length, true);
+      else if (k === 'ArrowLeft' && panes.length > 1) show((state.active + panes.length - 1) % panes.length, true);
+    });
+  }
+
+  // ── build the panel ───────────────────────────────────────────────────────
+  function section(title) {
+    var s = make('section', { 'class': 'sec' });
+    if (title) s.appendChild(make('h2', null, title));
+    return s;
+  }
+  function slider(vertical) {
+    var s = make('input', { type: 'range', min: '1', max: '1', step: '1', value: '1', 'aria-label': 'Minimum count' });
+    if (vertical) { s.setAttribute('orient', 'vertical'); s.className = 'vrange'; }
+    s.addEventListener('input', function () { setThreshold(s.value); });
+    sliders.push(s);
+    return s;
+  }
+  if (cfg.toolbar && panelEl) {
+    // the rail (collapsed state): icons and a vertical slider
+    var rail = make('div', { 'class': 'railbox' });
+    ui.toggle = iconButton('left', 'Expand panel (P)', function () { setPanel(true); });
+    rail.appendChild(ui.toggle);
+    rail.appendChild(iconButton('search', 'Search words (/)', openSearch));
+    var vs = make('div', { 'class': 'vsl', title: 'Minimum count' });
+    vs.appendChild(slider(true));
+    ui.railThr = make('span', { 'class': 'vlab' });
+    vs.appendChild(ui.railThr);
+    rail.appendChild(vs);
+    ui.railEye = iconButton('eye', 'Show hidden words (H)', unhideAll);
+    ui.railEye.classList.add('badge');
+    rail.appendChild(ui.railEye);
+    rail.appendChild(iconButton('theme', 'Light / dark background (T)', function () { setTheme(state.theme === 'orig' ? 'alt' : 'orig'); }));
+    if (!cfg.fixedcolors) {
+      ui.railPal = iconButton('palette', 'Colours: As drawn (click for next)', cyclePalette);
+      rail.appendChild(ui.railPal);
+    }
+    rail.appendChild(make('div', { 'class': 'sep' }));
+    rail.appendChild(iconButton('plus', 'Zoom in (+)', function () { zoomCentre(0.8); }));
+    rail.appendChild(iconButton('minus', 'Zoom out (\u2212)', function () { zoomCentre(1.25); }));
+    rail.appendChild(iconButton('reset', 'Reset zoom (0)', zoomReset));
+    rail.appendChild(iconButton('full', 'Fullscreen (F)', toggleFullscreen));
+    rail.appendChild(make('div', { 'class': 'sep' }));
+    rail.appendChild(iconButton('save', 'Save as PNG', function () { save('png'); }));
+    rail.appendChild(iconButton('help', 'Keyboard shortcuts (?)', function () { toggleHelp(); }));
+
+    // the open panel: labelled sections
+    var full = make('div', { 'class': 'fullbox' });
+    var head = make('div', { 'class': 'phead' });
+    head.appendChild(make('span', { 'class': 'ptitle' }, 'Explore'));
+    head.appendChild(iconButton('right', 'Collapse panel (P)', function () { setPanel(false); }));
+    full.appendChild(head);
+
+    var s1 = section(null);
+    var sw = make('div', { 'class': 'searchwrap' });
+    var si = make('span', { 'class': 'sicon' });
+    si.innerHTML = svgIcon('search');
+    sw.appendChild(si);
+    ui.search = make('input', { type: 'search', placeholder: 'Search words', 'aria-label': 'Search words' });
+    ui.search.addEventListener('input', function () { state.query = ui.search.value.trim(); apply(); });
+    sw.appendChild(ui.search);
+    s1.appendChild(sw);
+    ui.hits = make('div', { 'class': 'note' });
+    s1.appendChild(ui.hits);
+    full.appendChild(s1);
+
+    var s2 = section('Minimum count');
+    var sr = make('div', { 'class': 'hrow' });
+    sr.appendChild(slider(false));
+    ui.thrLabel = make('span', { 'class': 'note' });
+    sr.appendChild(ui.thrLabel);
+    s2.appendChild(sr);
+    full.appendChild(s2);
+
+    var s3 = section('Top words');
+    ui.list = make('ol', { 'class': 'list' });
+    s3.appendChild(ui.list);
+    ui.more = make('button', { type: 'button', 'class': 'linkbtn' }, 'Show all');
+    ui.more.addEventListener('click', function () { state.listAll = !state.listAll; renderList(); });
+    s3.appendChild(ui.more);
+    ui.unhide = make('button', { type: 'button', 'class': 'linkbtn' }, 'No hidden words');
+    ui.unhide.addEventListener('click', unhideAll);
+    s3.appendChild(ui.unhide);
+    s3.appendChild(make('div', { 'class': 'hint' }, 'Click a word in the cloud or in this list to hide it.'));
+    full.appendChild(s3);
+
+    var s4 = section('View');
+    var vr = make('div', { 'class': 'brow' });
+    vr.appendChild(iconButton('minus', 'Zoom out (\u2212)', function () { zoomCentre(1.25); }));
+    vr.appendChild(iconButton('plus', 'Zoom in (+)', function () { zoomCentre(0.8); }));
+    vr.appendChild(iconButton('reset', 'Reset zoom (0)', zoomReset));
+    vr.appendChild(iconButton('full', 'Fullscreen (F)', toggleFullscreen));
+    s4.appendChild(vr);
+    s4.appendChild(make('div', { 'class': 'hint' }, 'Scroll to zoom, drag to move around.'));
+    full.appendChild(s4);
+
+    var s5 = section('Appearance');
+    ui.themeBtn = make('button', { type: 'button', 'class': 'btn' }, '');
+    ui.themeBtn.addEventListener('click', function () { setTheme(state.theme === 'orig' ? 'alt' : 'orig'); });
+    s5.appendChild(ui.themeBtn);
+    var sg = make('div', { 'class': 'swatches' });
+    ui.swatches = PALETTES.map(function (q) {
+      var b = make('button', { type: 'button', 'class': 'swatch', 'data-id': q.id, title: q.name, 'aria-label': 'Colours: ' + q.name });
+      var cols = q.id === 'orig' ? panes[0]._words.slice(0, 4).map(function (w) { return w.getAttribute('data-fill0'); })
+        : q.id === 'greys' ? ['#f5f5f5', '#bdbdbd', '#8a8a8a'] : q.colors.slice(0, 4);
+      b.style.background = 'linear-gradient(90deg,' + cols.join(',') + ')';
+      b.addEventListener('click', function () { setPalette(q.id); });
+      sg.appendChild(b);
+      return b;
+    });
+    if (!cfg.fixedcolors) s5.appendChild(sg);
+    else s5.appendChild(make('div', { 'class': 'hint' }, 'Colours show a variable (see the key under the cloud).'));
+    full.appendChild(s5);
+
+    var s6 = section('Save image');
+    var br = make('div', { 'class': 'brow' });
+    ['png', 'svg', 'jpg'].forEach(function (f) {
+      var b = make('button', { type: 'button', 'class': 'btn', title: 'Save what is shown as ' + f.toUpperCase() }, f.toUpperCase());
+      b.addEventListener('click', function () { save(f); });
+      br.appendChild(b);
+    });
+    s6.appendChild(br);
+    full.appendChild(s6);
+
+    var foot = make('div', { 'class': 'pfoot' });
+    var hb = make('button', { type: 'button', 'class': 'linkbtn' }, 'Keyboard shortcuts  ?');
+    hb.addEventListener('click', function () { toggleHelp(); });
+    foot.appendChild(hb);
+    foot.appendChild(make('span', { 'class': 'credit' }, 'calligram for Stata'));
+    full.appendChild(foot);
+
+    panelEl.appendChild(rail);
+    panelEl.appendChild(full);
+
+    // shortcuts list
+    ui.help = make('div', { 'class': 'help', role: 'dialog', 'aria-label': 'Keyboard shortcuts' });
+    ui.help.style.display = 'none';
+    var card = make('div', { 'class': 'helpcard' });
+    card.appendChild(make('h2', null, 'Keyboard shortcuts'));
+    var tbl = make('table');
+    KEYS.forEach(function (k) {
+      var tr = make('tr');
+      var td1 = make('td');
+      td1.appendChild(make('kbd', null, k[0]));
+      tr.appendChild(td1);
+      tr.appendChild(make('td', null, k[1]));
+      tbl.appendChild(tr);
+    });
+    card.appendChild(tbl);
+    var close = make('button', { type: 'button', 'class': 'btn' }, 'Close');
+    close.addEventListener('click', function () { toggleHelp(false); });
+    card.appendChild(close);
+    ui.help.appendChild(card);
+    ui.help.addEventListener('click', function (ev) { if (ev.target === ui.help) toggleHelp(false); });
+    body.appendChild(ui.help);
+  }
+
+  // A single save button (export() option without the panel)
+  var legacy = doc.getElementById('expbtn');
+  if (legacy) legacy.addEventListener('click', function () { save(legacy.getAttribute('data-fmt') || 'png'); });
+
+  // ── tabs for by() groups ──────────────────────────────────────────────────
+  if (panes.length > 1 && tabsEl) {
+    tabsEl.setAttribute('role', 'tablist');
+    ui.tabs = panes.map(function (p, k) {
+      var b = make('button', { type: 'button', role: 'tab' }, p.getAttribute('data-label') || ('Group ' + (k + 1)));
+      b.addEventListener('click', function () { if (k !== state.active) show(k, true); });
+      tabsEl.appendChild(b);
+      return b;
+    });
+    body.classList.add('has-tabs');
+  }
+
+  body.classList.add('wc-ui');
+  if (!cfg.fixed) body.classList.add('wc-fit');   // lock the page to the window only when fitting
+  setTheme('orig');
+  setPalette('orig');
+  if (panelEl && cfg.toolbar) setPanel(window.innerWidth >= 1100);
+  show(0, false);
+
+  // Start the fade-in once the page has loaded and is being drawn, so it is
+  // never over before it is seen. The head of the page hides the words until
+  // then (class wc-pre on <html>).
+  function reveal() {
+    var raf = window.requestAnimationFrame || function (f) { return setTimeout(f, 16); };
+    raf(function () {
+      fit();
+      enter(pane());
+      doc.documentElement.classList.remove('wc-pre');
+    });
+  }
+  if (doc.readyState === 'complete') reveal();
+  else window.addEventListener('load', reveal);
+})();
+</script>
+</body></html>

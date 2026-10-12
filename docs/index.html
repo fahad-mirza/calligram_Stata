@@ -1,0 +1,136 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>calligram for Stata: gallery</title><style>
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0f1629;color:#e8eaf0;line-height:1.5}
+header{padding:56px 24px 36px;text-align:center;background:radial-gradient(ellipse at top,#22305a 0%,#0f1629 70%)}
+header h1{margin:0;font-size:clamp(2.2rem,5vw,3.6rem);letter-spacing:.5px} header h1 span{color:#f28e2b}
+header p{max-width:760px;margin:14px auto 0;font-size:1.12rem;opacity:.85}
+.cta{margin-top:26px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.cta a{padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600}
+.cta .p{background:#4e79a7;color:#fff} .cta .s{border:1px solid rgba(255,255,255,.3);color:#e8eaf0}
+.install{max-width:820px;margin:28px auto 0;text-align:left;background:#0a0f1e;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px 18px;font:14px/1.6 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto;white-space:pre}
+main{max-width:1320px;margin:0 auto;padding:16px 20px 60px}
+.hint{text-align:center;opacity:.7;margin:10px 0 26px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:22px}
+.card{background:#162040;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.pic{display:block;background:#fff;aspect-ratio:16/10;overflow:hidden} .pic img{width:100%;height:100%;object-fit:contain;display:block;background:#16213e}
+.body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.body h3{margin:0;font-size:1.08rem} .body p{margin:0;opacity:.8;font-size:.95rem}
+details{margin-top:4px} summary{cursor:pointer;opacity:.75;font-size:.9rem}
+pre{margin:8px 0 0;background:#0a0f1e;border-radius:8px;padding:10px 12px;overflow-x:auto;font-size:12.5px}
+.open{margin-top:auto;padding-top:8px;color:#76b7b2;font-weight:600;text-decoration:none}
+footer{text-align:center;opacity:.6;padding:30px 20px 50px;font-size:.9rem} footer a{color:#76b7b2}
+</style></head><body>
+<header><h1><span>calligram</span> for Stata</h1>
+<p>Word clouds in any shape, from survey text to maps. Every example below is a real page written by Stata: open one, then search, filter, hover, zoom, click the key, switch groups and save pictures.</p>
+<div class="cta"><a class="p" href="https://github.com/fahad-mirza/calligram_Stata">Get it on GitHub</a><a class="s" href="https://github.com/fahad-mirza/calligram_Stata#readme">Read the guide</a></div>
+<div class="install">net install calligram, from("https://raw.githubusercontent.com/fahad-mirza/calligram_Stata/main/")
+net get calligram, from("https://raw.githubusercontent.com/fahad-mirza/calligram_Stata/main/")   // example data</div>
+</header>
+<main><p class="hint">Click any picture to open its interactive page.</p><div class="grid">
+<article class="card"><a class="pic" href="examples/01_survey.html"><img src="thumbs/01_survey.jpg" alt="Survey responses" loading="lazy"></a>
+<div class="body"><h3>Survey responses</h3><p>The basics: 16 open-ended answers, cleaned, counted and packed so no two words touch.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(response) minfreq(1)</code></pre></details>
+<a class="open" href="examples/01_survey.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/02_gradient.html"><img src="thumbs/02_gradient.jpg" alt="A title, a light background and a gradient" loading="lazy"></a>
+<div class="body"><h3>A title, a light background and a gradient</h3><p>Colours run from the most to the least frequent word.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(response) minfreq(1) bgcolor(white) ///
+    gradient(#1d3557 #e63946) title(&quot;What customers said&quot;)</code></pre></details>
+<a class="open" href="examples/02_gradient.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/03_rotated.html"><img src="thumbs/03_rotated.jpg" alt="Rotated words, another font" loading="lazy"></a>
+<div class="body"><h3>Rotated words, another font</h3><p>Seven fonts are bundled, so the page looks the same on every computer.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(response) minfreq(1) rotate(random) font(Roboto)</code></pre></details>
+<a class="open" href="examples/03_rotated.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/04_heart.html"><img src="thumbs/04_heart.jpg" alt="A heart" loading="lazy"></a>
+<div class="body"><h3>A heart</h3><p>Nine shapes are built in: rectangle, ellipse, circle, square, cloud, heart, diamond, triangle and star.</p>
+<details><summary>Stata code</summary><pre><code>use cg_inaugural, clear
+calligram, textvar(text) shape(heart) width(1000) height(900) ///
+    maxwords(250) rotate(random)</code></pre></details>
+<a class="open" href="examples/04_heart.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/04_star.html"><img src="thumbs/04_star.jpg" alt="A star with its outline" loading="lazy"></a>
+<div class="body"><h3>A star with its outline</h3><p>outline draws the edge of the shape behind the words.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(text) shape(star) outline width(1000) height(1000) ///
+    maxwords(250) font(Lato)</code></pre></details>
+<a class="open" href="examples/04_star.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/05_blob.html"><img src="thumbs/05_blob.jpg" alt="Any shape from coordinates" loading="lazy"></a>
+<div class="body"><h3>Any shape from coordinates</h3><p>Points saved as _ID, _X, _Y form a one-area shapefile; the outline is exact.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(text) shapes(cg_blob_shp.dta) projection(none) outline ///
+    width(1000) height(1000) maxwords(300) phrases rotate(90) font(Roboto)</code></pre></details>
+<a class="open" href="examples/05_blob.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/05b_blob_mask.html"><img src="thumbs/05b_blob_mask.jpg" alt="... or from a picture" loading="lazy"></a>
+<div class="body"><h3>... or from a picture</h3><p>Any black-on-white image works as a mask, including a Stata graph you export.</p>
+<details><summary>Stata code</summary><pre><code>graph export cg_mask_blob.png, width(1000) replace
+calligram, textvar(text) mask(cg_mask_blob.png) outline ///
+    width(1000) height(1000) maxwords(300) rotate(random) font(Lato)</code></pre></details>
+<a class="open" href="examples/05b_blob_mask.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/06_world.html"><img src="thumbs/06_world.jpg" alt="Every city inside its own country" loading="lazy"></a>
+<div class="body"><h3>Every city inside its own country</h3><p>A world shapefile and each city&#x27;s latitude and longitude; size shows population.</p>
+<details><summary>Stata code</summary><pre><code>use cg_cities, clear
+calligram, wordvar(city) countvar(population) shapes(cg_countries_shp.dta) ///
+    location(lat lon) outline outlinewidth(1) outlinecolor(#b8b8b8)  ///
+    width(2400) height(1067) maxwords(1207) minfreq(1) minfontsize(4) ///
+    margin(2) font(Lato) bgcolor(white)</code></pre></details>
+<a class="open" href="examples/06_world.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/06_world_near.html"><img src="thumbs/06_world_near.jpg" alt="... and each near its real location" loading="lazy"></a>
+<div class="body"><h3>... and each near its real location</h3><p>near places every city as close as it can to its own point.</p>
+<details><summary>Stata code</summary><pre><code>calligram, wordvar(city) countvar(population) shapes(cg_countries_shp.dta) ///
+    location(lat lon) near outline ...</code></pre></details>
+<a class="open" href="examples/06_world_near.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/07_africa.html"><img src="thumbs/07_africa.jpg" alt="A continent, cut with ordinary Stata commands" loading="lazy"></a>
+<div class="body"><h3>A continent, cut with ordinary Stata commands</h3><p>keep and merge on the shapefile give any region you like.</p>
+<details><summary>Stata code</summary><pre><code>use cg_countries, clear
+keep if continent == &quot;Africa&quot;
+keep _ID
+merge 1:m _ID using cg_countries_shp, keep(match) nogenerate
+save africa_shp, replace
+use cg_cities, clear
+calligram if continent == &quot;Africa&quot;, wordvar(city) countvar(population) ///
+    shapes(africa_shp.dta) location(lat lon) outline width(900) height(1280)</code></pre></details>
+<a class="open" href="examples/07_africa.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/08_inaugural.html"><img src="thumbs/08_inaugural.jpg" alt="Two-word phrases" loading="lazy"></a>
+<div class="body"><h3>Two-word phrases</h3><p>phrases finds pairs such as &quot;united states&quot; and &quot;fellow citizens&quot; and shows each as one entry.</p>
+<details><summary>Stata code</summary><pre><code>use cg_inaugural, clear
+calligram, textvar(text) phrases maxwords(200) font(Merriweather) ///
+    title(&quot;US inaugural addresses, 1789-2025&quot;)</code></pre></details>
+<a class="open" href="examples/08_inaugural.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/09_by_century.html"><img src="thumbs/09_by_century.jpg" alt="One cloud per group" loading="lazy"></a>
+<div class="body"><h3>One cloud per group</h3><p>by() puts each group in its own tab, and image() writes one picture per group.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(text) by(century) phrases maxwords(120) font(Merriweather)</code></pre></details>
+<a class="open" href="examples/09_by_century.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/10_alice.html"><img src="thumbs/10_alice.jpg" alt="A book in a circle" loading="lazy"></a>
+<div class="body"><h3>A book in a circle</h3><p>Alice&#x27;s Adventures in Wonderland, with &quot;mock turtle&quot;, &quot;march hare&quot; and &quot;white rabbit&quot; found as phrases.</p>
+<details><summary>Stata code</summary><pre><code>use cg_alice, clear
+calligram, textvar(text) phrases shape(circle) width(1000) height(1000) ///
+    maxwords(250) minfreq(3) rotate(random) font(Merriweather) ///
+    bgcolor(#fdfaf3) gradient(#7b2d26 #33658a)</code></pre></details>
+<a class="open" href="examples/10_alice.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/11_auto.html"><img src="thumbs/11_auto.jpg" alt="Words already counted" loading="lazy"></a>
+<div class="body"><h3>Words already counted</h3><p>wordvar() and countvar(): car makes in sysuse auto, sized by total price.</p>
+<details><summary>Stata code</summary><pre><code>sysuse auto, clear
+gen brand = word(make, 1)
+calligram, wordvar(brand) countvar(price) minfreq(1) nostopwords ///
+    shape(ellipse) font(Open Sans) bgcolor(white)</code></pre></details>
+<a class="open" href="examples/11_auto.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/12_weights.html"><img src="thumbs/12_weights.jpg" alt="Survey weights" loading="lazy"></a>
+<div class="body"><h3>Survey weights</h3><p>Every word counts with its response&#x27;s weight (aweight, fweight).</p>
+<details><summary>Stata code</summary><pre><code>calligram [aweight = weight], textvar(response) minfreq(1)</code></pre></details>
+<a class="open" href="examples/12_weights.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/13_saving.html"><img src="thumbs/13_saving.jpg" alt="The results as a dataset" loading="lazy"></a>
+<div class="body"><h3>The results as a dataset</h3><p>saving() keeps every word with its count, size, position and colour.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(text) phrases maxwords(100) saving(words, replace)
+use words, clear
+list rank word count fontsize in 1/10</code></pre></details>
+<a class="open" href="examples/13_saving.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/14_large.html"><img src="thumbs/14_large.jpg" alt="3 million words in under a second" loading="lazy"></a>
+<div class="body"><h3>3 million words in under a second</h3><p>80,000 paragraphs, counted on all processor cores.</p>
+<details><summary>Stata code</summary><pre><code>use cg_inaugural, clear
+expand 50
+calligram, textvar(text)</code></pre></details>
+<a class="open" href="examples/14_large.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/15_online.html"><img src="thumbs/15_online.jpg" alt="Smaller pages with online" loading="lazy"></a>
+<div class="body"><h3>Smaller pages with online</h3><p>Words as text with the font from Google Fonts: much smaller files, needs internet.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(text) online font(Lato) maxwords(200)</code></pre></details>
+<a class="open" href="examples/15_online.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/16_colorby_year.html"><img src="thumbs/16_colorby_year.jpg" alt="Colour by a number" loading="lazy"></a>
+<div class="body"><h3>Colour by a number</h3><p>Each word gets the average year of the addresses it appears in.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(text) colorby(year) gradient(#d95f02 #5e3c99) phrases ///
+    maxwords(200) font(Merriweather)</code></pre></details>
+<a class="open" href="examples/16_colorby_year.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/17_colorby_century.html"><img src="thumbs/17_colorby_century.jpg" alt="Colour by group" loading="lazy"></a>
+<div class="body"><h3>Colour by group</h3><p>Each word takes the colour of the century it is most typical of; click the key to hide a group.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(text) colorby(century) phrases maxwords(200) font(Merriweather)</code></pre></details>
+<a class="open" href="examples/17_colorby_century.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/18_colorby_foreign.html"><img src="thumbs/18_colorby_foreign.jpg" alt="Groups from value labels" loading="lazy"></a>
+<div class="body"><h3>Groups from value labels</h3><p>A labelled variable gives the categories and their names.</p>
+<details><summary>Stata code</summary><pre><code>sysuse auto, clear
+gen brand = word(make, 1)
+calligram, wordvar(brand) countvar(price) colorby(foreign) minfreq(1) ///
+    nostopwords shape(ellipse) font(Open Sans) bgcolor(white)</code></pre></details>
+<a class="open" href="examples/18_colorby_foreign.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/19_colorimage.html"><img src="thumbs/19_colorimage.jpg" alt="Colours from a picture" loading="lazy"></a>
+<div class="body"><h3>Colours from a picture</h3><p>Each word takes the average colour of the picture under its letters.</p>
+<details><summary>Stata code</summary><pre><code>calligram, textvar(text) shape(heart) colorimage(stripes.png) ///
+    width(1000) height(900) maxwords(250) rotate(random) bgcolor(white)</code></pre></details>
+<a class="open" href="examples/19_colorimage.html">Open the interactive page &rarr;</a></div></article>
+</div></main>
+<footer>calligram by Fahad Mirza &middot; example data: Natural Earth, US inaugural addresses, Project Gutenberg, sysuse auto &middot; <a href="https://github.com/fahad-mirza/calligram_Stata">source and documentation</a></footer>
+</body></html>

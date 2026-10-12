@@ -1,359 +1,488 @@
-# wordcloud2 - Interactive Word Cloud for Stata
+<h1 align="center">calligram</h1>
+<p align="center"><b>Word clouds in any shape, from survey text to maps, for Stata</b></p>
 
-> **Beta** · v1.2.0 · Built by [Fahad Mirza](https://github.com/fahad-mirza/) · Co-developed with [Claude](https://www.anthropic.com) (Anthropic)
+<p align="center">
+<a href="https://fahad-mirza.github.io/calligram_Stata/"><img alt="Live gallery" src="https://img.shields.io/badge/live%20gallery-open-4e79a7"></a>
+<img alt="Stata 17+" src="https://img.shields.io/badge/Stata-17%2B-1a5f91">
+<img alt="Version 1.0.4" src="https://img.shields.io/badge/version-1.0.4%20beta-f28e2b">
+<img alt="Nothing else to install" src="https://img.shields.io/badge/dependencies-none-59a14f">
+</p>
 
-`wordcloud2` is a Stata command that reads a string variable containing free text, counts word frequencies across all observations, and renders the results as a fully interactive, self-contained HTML/SVG word cloud. No external software, no Python, no R. Open the output in any modern browser and it just works.
+<p align="center"><img src="gallery/06_world_near.png" alt="The world's cities, each inside its own country, near its real location" width="100%"></p>
 
----
+> *A calligram is text arranged to form a picture.* **calligram** turns open-ended survey answers, documents or any text into word clouds: interactive web pages that work offline, plus PNG, JPG or SVG pictures. Words are packed by the shape of their letters and never overlap. They can fill a heart, a star, your own logo, a shape drawn from coordinates, or a map with every word inside its own country.
+>
+> *Formerly `wordcloud2`.*
 
-## Output preview
+### 👉 [Open the live, interactive gallery](https://fahad-mirza.github.io/calligram_Stata/)
 
-**Example 1: Default output**
+Every picture in this README links to the real page Stata wrote. Open one and try searching, filtering, hovering, zooming and clicking the key.
 
-![wordcloud2 default output - dark background, Tableau palette](screenshots/Wordcloud_Example_1.png)
-
-**Example 2: Interactive tooltip on hover**
-
-![wordcloud2 tooltip showing word count on hover](screenshots/Wordcloud_Example_2.png)
-
-> Screenshots generated from the [example do-file](wordcloud2_example.do) using the built-in synthetic survey dataset.
-
----
-
-## Features
-
-- **Collision-free layout**: Archimedean spiral + AABB collision detection ensures words never overlap, mirroring the algorithm used by Python's `amueller/word_cloud`
-- **Interactive HTML output**: hover any word to see its exact frequency count in a tooltip
-- **In-browser static export**: embed a one-click download button for PNG, JPG, or SVG without leaving the browser
-- **Full color control**: set background color and title color using any CSS value (hex, named, `rgb()`, `rgba()`, `hsl()`)
-- **Palette integration**: plug in any palette from Ben Jann's [colorpalette](https://repec.sowi.unibe.ch/stata/palettes/) package by name
-- **Font size scaling**: sizes mapped on the square root of frequency so rare words stay legible
-- **Built-in English stopwords**: based on the `amueller/word_cloud` default list, fully suppressible
-- **Safe by design**: uses `preserve`/`restore` internally; your dataset is never modified
+<table>
+<tr>
+<td width="50%"><img src="assets/demo_explore.gif" alt="Searching, filtering by count and hovering over words"><br><sub><b>Explore:</b> search, set a minimum count, hover for counts and shares</sub></td>
+<td width="50%"><img src="assets/demo_zoom.gif" alt="Zooming into the world map and panning"><br><sub><b>Zoom and pan:</b> scroll to zoom, drag to move around</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="assets/demo_legend.gif" alt="Clicking the colour key hides and shows groups of words"><br><sub><b>Colour with meaning:</b> click the key to hide or show a group</sub></td>
+<td width="50%"><img src="assets/demo_tabs.gif" alt="Switching between one cloud per group"><br><sub><b>One cloud per group:</b> <code>by()</code> gives tabs</sub></td>
+</tr>
+</table>
 
 ---
 
-## Installation
+## Contents
 
-### Option 1: Direct install (recommended)
+- [Why calligram](#why-calligram)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [Gallery](#gallery): [basics](#the-basics) · [shapes](#shapes) · [maps](#maps) · [text](#working-with-text) · [colour with meaning](#colour-with-meaning) · [results and speed](#results-and-speed)
+- [The interactive page](#the-interactive-page)
+- [Options](#options)
+- [Stored results](#stored-results)
+- [How it works](#how-it-works)
+- [Requirements and troubleshooting](#requirements-and-troubleshooting)
+- [FAQ](#faq)
+- [Credits and licence](#credits-and-licence)
 
-Run this single command in Stata to download and install `wordcloud2` immediately:
+---
+
+## Why calligram
+
+- **Nothing to install but the package.** A Java engine bundled in the package runs on Stata's own Java. There's no Python, R, or internet connection needed.
+- **Tight, clean layouts.** Words are packed by the exact pixels of their letters, not their bounding boxes, so the cloud is dense and no two words ever touch.
+- **Any shape.** Nine built-in shapes, any black-on-white picture, any shape from coordinates, or a map from a Stata shapefile with each word inside its own area.
+- **Text handling that suits survey data.** Stopwords in English, French, Spanish and Portuguese; plurals merged with their singulars; hyphenated words kept whole; contractions handled; two-word phrases detected statistically; weights; `if`/`in`; `by()` groups; and words you've already counted.
+- **Colour that means something.** Colour words by a numeric variable (average rating, sentiment, year), by the group each word is typical of, by a colour you choose for each word, or from a picture.
+- **Pages that work anywhere.** One self-contained HTML file that works offline, with search, filtering, a top-words list, hover cards, zoom and pan, light and dark themes, palettes, and PNG/SVG/JPG saving. The same picture can also be written straight from Stata with `image()`.
+- **Fast.** About 3 million words counted in under a second on 8 cores.
+- **Reproducible.** The same data and options always give the same cloud. Change `seed()` for a different arrangement.
+
+## Install
 
 ```stata
-net install wordcloud2, from("https://raw.githubusercontent.com/fahad-mirza/wordcloud2_stata/main/") replace
+net install calligram, from("https://raw.githubusercontent.com/fahad-mirza/calligram_Stata/main/") replace
+* the example data used below (into the current folder)
+net get calligram, from("https://raw.githubusercontent.com/fahad-mirza/calligram_Stata/main/")
+help calligram
 ```
 
-### Option 2: Inspect before installing
+Requires Stata 17 or newer, on Windows, macOS or Linux.
 
-If you'd like to review the package description first, run `net describe` and then confirm the install:
+## Quick start
 
 ```stata
-net describe wordcloud2, from("https://raw.githubusercontent.com/fahad-mirza/wordcloud2_stata/main/")
+use cg_inaugural, clear              // US inaugural addresses, one row per paragraph
+calligram, textvar(text)             // writes calligram.html: click the path shown to open it
 ```
 
-This displays the package name, version, author, and the list of files that will be installed. When you're ready, install with:
+Add options as you need them:
 
 ```stata
-net install wordcloud2, replace
-```
-
-> **SSL note:** If you receive an SSL error, run `set sslrelax on` before either command.
-
-### Verify the installation
-
-```stata
-which wordcloud2
-help wordcloud2
-```
-
-### Optional dependency - color palettes
-
-To use the `palette()` option, install Ben Jann's packages from SSC:
-
-```stata
-ssc install palettes, replace
-ssc install colrspace, replace
-ssc install moremata, replace
+calligram, textvar(text) phrases shape(heart) title("Inaugural addresses") ///
+    savefile(inaugural.html) image(inaugural.png, replace)
 ```
 
 ---
 
-## Syntax
+## Gallery
+
+All examples come from [`calligram_gallery.do`](calligram_gallery.do), which builds each page and picture. Click a picture to open its interactive page.
+
+### The basics
+
+#### Survey responses
+Sixteen open-ended answers, cleaned (lower case, punctuation removed, contractions handled), stopwords removed, counted and packed.
 
 ```stata
-wordcloud2, textvar(varname) [options]
+calligram, textvar(response) minfreq(1)
 ```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/01_survey.html"><img src="gallery/01_survey.png" alt="Survey word cloud" width="100%"></a>
 
-### Options
+#### A title, a light background and a gradient
+```stata
+calligram, textvar(response) minfreq(1) bgcolor(white) ///
+    gradient(#1d3557 #e63946) title("What customers said")
+```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/02_gradient.html"><img src="gallery/02_gradient.png" alt="Gradient word cloud on white" width="100%"></a>
 
-| Group | Option | Description | Default |
-|---|---|---|---|
-| **Required** | `textvar(varname)` | String variable containing free text | — |
-| **Text processing** | `maxwords(#)` | Maximum words to display | `100` |
-| | `minfreq(#)` | Minimum word frequency to include | `2` |
-| | `minlength(#)` | Minimum word character length | `3` |
-| | `stopwords(string)` | Extra stopwords (space-delimited) | — |
-| | `nostopwords` | Suppress built-in English stopword list | — |
-| | `noclean` | Suppress lowercasing and punctuation removal | — |
-| **Appearance** | `title("text"[, color() size()])` | Chart title with optional color and size | `"Word Cloud"` |
-| | `width(#)` | Canvas width in pixels | `900` |
-| | `height(#)` | Canvas height in pixels | `500` |
-| | `margin(#)` | Minimum gap between words in pixels | `6` |
-| | `maxfontsize(#)` | Font size of the most frequent word | `80` |
-| | `minfontsize(#)` | Font size of the least frequent word | `10` |
-| | `bgcolor(color)` | Background color (any CSS value) | `#16213e` |
-| | `palette(name)` | Color palette name from `colorpalette` | built-in tab10 |
-| **Output** | `savefile(filename)` | Output HTML file path | `wordcloud2.html` |
-| | `export(format)` | Embed download button: `png`, `jpg`, or `svg` | — |
-
----
-
-## Color formats
-
-Both `bgcolor()` and the `color()` sub-option of `title()` accept any CSS color. No extra quotation marks needed around the value.
+#### Rotated words and another font
+Seven fonts are bundled (Arimo, Tinos, Roboto, Open Sans, Lato, Noto Sans and Merriweather), so pages look identical on every computer. Any font installed on your system works too.
 
 ```stata
-bgcolor(#16213e)           * hex
-bgcolor(white)             * named color
-bgcolor(rgb(0, 30, 60))    * RGB
-bgcolor(rgba(0,30,60,0.9)) * RGBA with alpha
-bgcolor(hsl(220,60%,15%))  * HSL
+calligram, textvar(response) minfreq(1) rotate(random) font(Roboto)
 ```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/03_rotated.html"><img src="gallery/03_rotated.png" alt="Rotated words" width="100%"></a>
 
-The `title()` option takes the text first, then optional sub-options after a comma:
+### Shapes
+
+#### Built-in shapes
+`shape()` takes rectangle (the default), ellipse, circle, square, cloud, heart, diamond, triangle or star. `outline` draws the edge.
 
 ```stata
-title("My Title")
-title("My Title", color(#ff6b6b))
-title("My Title", size(2em))
-title("My Title", color(rgb(0,128,255)) size(2em))
-title("My Title", size(28px) color(navy))
+use cg_inaugural, clear
+calligram, textvar(text) shape(heart) width(1000) height(900) maxwords(250) rotate(random)
+calligram, textvar(text) shape(star) outline width(1000) height(1000) maxwords(250) font(Lato)
 ```
+<table><tr>
+<td><a href="https://fahad-mirza.github.io/calligram_Stata/examples/04_heart.html"><img src="gallery/04_heart.png" alt="Heart"></a></td>
+<td><a href="https://fahad-mirza.github.io/calligram_Stata/examples/04_star.html"><img src="gallery/04_star.png" alt="Star"></a></td>
+</tr></table>
 
-`size()` accepts any CSS font-size value. A plain number is treated as `em`.
-
----
-
-## Color palettes
-
-Any palette name accepted by Ben Jann's `colorpalette` package can be used. `wordcloud2` calls `colorpalette name, n(nplaced) nograph` internally, so the palette is automatically interpolated or cycled to exactly as many colors as words were placed.
-
-Some commonly used palettes:
-
-| Name | Description |
-|---|---|
-| `Set1` | ColorBrewer qualitative - high contrast |
-| `Set2` | ColorBrewer qualitative - pastel |
-| `Dark2` | ColorBrewer qualitative - darker tones |
-| `Accent` | ColorBrewer with accents |
-| `tableau` | Tableau 10 (Tableau's default palette) |
-| `viridis` | Perceptually uniform, blue-green-yellow |
-| `plasma` | Perceptually uniform, purple-orange |
-| `magma` | Perceptually uniform, black-purple-yellow |
-
-If `colorpalette` is not installed or the palette name is unrecognised, `wordcloud2` falls back to its built-in Tableau-inspired ten-color palette and prints a warning.
-
----
-
-## Examples
-
-All examples below use this synthetic dataset of open-ended survey responses:
+#### Any shape you can describe with coordinates
+Save points as `_ID`, `_X`, `_Y` and you have a one-area shapefile, which `shapes()` fills exactly. Here a wobbly blob is drawn in Stata:
 
 ```stata
 clear
-input str200 response
-"The product quality is excellent and the service was outstanding"
-"Great quality but delivery was slow and customer service needs improvement"
-"Amazing experience with the product and very helpful support team"
-"Poor quality product arrived damaged and customer service was unhelpful"
-"Outstanding quality and excellent delivery speed highly recommend"
-"The service team was helpful but the product quality could be better"
-"Excellent customer experience product quality exceeded my expectations"
-"Good quality product but packaging was damaged during delivery"
-"Highly recommend excellent quality and very fast delivery service"
-"The support team was amazing and the product quality is outstanding"
-"Product quality is good but customer service response was very slow"
-"Great delivery service but product quality did not meet expectations"
-"Excellent quality product and outstanding customer service experience"
-"The product arrived damaged but the customer service team was helpful"
-"Amazing support team excellent delivery and outstanding product quality"
-end
+set seed 2024
+set obs 2881
+gen double t = (_n - 1) * 2 * _pi / 2880
+gen double r = 1 + 0.15*sin(2*t + 1) + 0.12*sin(3*t + 2) + 0.18*sin(5*t + 4)
+gen double _X = r * cos(t)
+gen double _Y = r * sin(t)
+gen byte _ID = 1
+gen int shape_order = _n
+save blob_shp, replace
+
+use cg_inaugural, clear
+calligram, textvar(text) shapes(blob_shp.dta) projection(none) outline ///
+    width(1000) height(1000) maxwords(300) phrases rotate(90) font(Roboto)
 ```
 
-### Example 1: Basic call, all defaults
+#### ... or from a picture
+Any black-on-white image works with `mask()`, including a Stata graph you export. White margins are cropped automatically.
 
 ```stata
-wordcloud2, textvar(response)
+* blob_mask.png: the blob drawn with twoway and saved with graph export
+* (full code in calligram_gallery.do)
+calligram, textvar(text) mask(blob_mask.png) outline width(1000) height(1000) ///
+    maxwords(300) rotate(random) font(Lato)
 ```
+<table><tr>
+<td><a href="https://fahad-mirza.github.io/calligram_Stata/examples/05_blob.html"><img src="gallery/05_blob.png" alt="Shape from coordinates"></a><br><sub>from coordinates: <code>shapes()</code></sub></td>
+<td><a href="https://fahad-mirza.github.io/calligram_Stata/examples/05b_blob_mask.html"><img src="gallery/05b_blob_mask.png" alt="Shape from a picture"></a><br><sub>from a picture: <code>mask()</code></sub></td>
+</tr></table>
 
-Outputs `wordcloud2.html` in the current directory. Built-in English stopwords are applied, words appearing fewer than twice are dropped, and the built-in ten-color palette is used on a dark navy background.
+### Maps
 
-### Example 2: Full customisation with PNG export
+#### Every city inside its own country
+`shapes()` reads any Stata-format shapefile (made by `spshape2dta`). `location(lat lon)` puts each word in the area that contains its point, and size follows the count, here population. Longitude and latitude are drawn in the Equal Earth projection automatically.
 
 ```stata
-wordcloud2,                                               ///
-    textvar(response)                                     ///
-    maxwords(80)                                          ///
-    minfreq(1)                                            ///
-    minlength(4)                                          ///
-    title("Customer Feedback Word Cloud",                 ///
-          color(rgb(100,100,100)) size(4))                ///
-    palette(tableau)                                      ///
-    width(1000)                                           ///
-    height(550)                                           ///
-    margin(1)                                             ///
-    maxfontsize(100)                                      ///
-    minfontsize(10)                                       ///
-    nostopwords                                           ///
-    bgcolor(rgb(255,255,255))                             ///
-    savefile("feedback_cloud.html")                       ///
-    export(png)
+use cg_cities, clear
+calligram, wordvar(city) countvar(population) shapes(cg_countries_shp.dta) ///
+    location(lat lon) outline outlinewidth(1) outlinecolor(#b8b8b8)          ///
+    width(2400) height(1067) maxwords(1207) minfreq(1) minfontsize(4)        ///
+    margin(2) font(Lato) bgcolor(white)                                      ///
+    title("The world's cities, each in its own country")
 ```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/06_world.html"><img src="gallery/06_world.png" alt="World map of cities" width="100%"></a>
 
-To open the output in your default browser after running:
+#### ... each as close as possible to its real location
+Add `near`:
 
 ```stata
-* Windows
-shell start feedback_cloud.html
-
-* Mac
-shell open feedback_cloud.html
-
-* Linux
-shell xdg-open feedback_cloud.html
+calligram, wordvar(city) countvar(population) shapes(cg_countries_shp.dta) ///
+    location(lat lon) near outline ...
 ```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/06_world_near.html"><img src="gallery/06_world_near.png" alt="World map, cities near their location" width="100%"></a>
 
-### Example 3: Title and color variations
+#### A continent, cut with ordinary Stata commands
+```stata
+use cg_countries, clear
+keep if continent == "Africa"
+keep _ID
+merge 1:m _ID using cg_countries_shp, keep(match) nogenerate
+sort _ID shape_order
+save africa_shp, replace
+
+use cg_cities, clear
+calligram if continent == "Africa", wordvar(city) countvar(population) ///
+    shapes(africa_shp.dta) location(lat lon) outline outlinewidth(1)    ///
+    width(900) height(1280) minfreq(1) minfontsize(5) margin(2) font(Lato) ///
+    title("Africa's cities")
+```
+<p align="center"><a href="https://fahad-mirza.github.io/calligram_Stata/examples/07_africa.html"><img src="gallery/07_africa.png" alt="Africa" width="55%"></a></p>
+
+### Working with text
+
+#### Two-word phrases
+`phrases` finds word pairs that belong together, such as "united states", "fellow citizens" and "civil war", using a likelihood test and a strength score. It shows each as one entry and lists them in the Results window. Use `addphrases()` and `dropphrases()` to adjust the list.
 
 ```stata
-* Default title styling
-wordcloud2, textvar(response) title("Customer Feedback")
-
-* Colored title on dark background
-wordcloud2, textvar(response) ///
-    title("Customer Feedback", color(#ff6b6b) size(2em)) ///
-    bgcolor(#1a1a2e)
-
-* RGB title color on white background
-wordcloud2, textvar(response) ///
-    title("Customer Feedback", color(rgb(0,128,255)) size(2em)) ///
-    bgcolor(white)
+use cg_inaugural, clear
+calligram, textvar(text) phrases maxwords(200) font(Merriweather) ///
+    title("US inaugural addresses, 1789-2025")
 ```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/08_inaugural.html"><img src="gallery/08_inaugural.png" alt="Inaugural addresses with phrases" width="100%"></a>
 
-### Example 4: Color palettes
+#### One cloud per group
+`by()` gives one cloud per group, as tabs on the same page. `image()` writes one picture per group.
 
 ```stata
-wordcloud2, textvar(response) palette(Set1)
-
-wordcloud2, textvar(response) palette(Dark2) bgcolor(white)
-
-wordcloud2, textvar(response) palette(viridis) bgcolor(#16213e)
+calligram, textvar(text) by(century) phrases maxwords(120) font(Merriweather) ///
+    image(by_century.png, replace)
 ```
+<table><tr>
+<td><img src="gallery/09_by_century_18th_century.png" alt="18th century"><br><sub>18th century</sub></td>
+<td><img src="gallery/09_by_century_19th_century.png" alt="19th century"><br><sub>19th century</sub></td>
+</tr><tr>
+<td><img src="gallery/09_by_century_20th_century.png" alt="20th century"><br><sub>20th century</sub></td>
+<td><img src="gallery/09_by_century_21st_century.png" alt="21st century"><br><sub>21st century</sub></td>
+</tr></table>
 
-### Example 5: Filtering and stopwords
+[Open the page with tabs](https://fahad-mirza.github.io/calligram_Stata/examples/09_by_century.html)
+
+#### A book in a circle
+*Alice's Adventures in Wonderland*. The phrases found include "mock turtle", "march hare", "white rabbit" and "cheshire cat".
 
 ```stata
-* Raise thresholds to reduce noise
-wordcloud2, textvar(response) minfreq(3) minlength(5)
-
-* Suppress built-in list entirely (e.g. for non-English text)
-wordcloud2, textvar(response) minfreq(1) nostopwords
-
-* Add domain-specific stopwords on top of the built-in list
-wordcloud2, textvar(response) stopwords(product service) minfreq(2)
+use cg_alice, clear
+calligram, textvar(text) phrases shape(circle) width(1000) height(1000) ///
+    maxwords(250) minfreq(3) rotate(random) font(Merriweather)          ///
+    bgcolor(#fdfaf3) gradient(#7b2d26 #33658a)
 ```
+<p align="center"><a href="https://fahad-mirza.github.io/calligram_Stata/examples/10_alice.html"><img src="gallery/10_alice.png" alt="Alice in Wonderland" width="60%"></a></p>
 
-### Example 6: Static export formats
+#### Words you've already counted
+`wordvar()` and `countvar()` take words and counts you've already computed, one row each. Here it's car makes in `sysuse auto`, sized by total price.
 
 ```stata
-wordcloud2, textvar(response) savefile(feedback_cloud.html) export(png)
-wordcloud2, textvar(response) savefile(feedback_cloud.html) export(jpg)
-wordcloud2, textvar(response) savefile(feedback_cloud.html) export(svg)
+sysuse auto, clear
+gen brand = word(make, 1)
+calligram, wordvar(brand) countvar(price) minfreq(1) nostopwords ///
+    shape(ellipse) font(Open Sans) bgcolor(white)
 ```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/11_auto.html"><img src="gallery/11_auto.png" alt="Car makes" width="100%"></a>
 
-### Example 7: Using your own data
+#### Survey weights
+`aweight` and `fweight` are supported. Each word counts with its response's weight.
 
 ```stata
-use "your_survey_data.dta", clear
-
-wordcloud2,                                  ///
-    textvar(open_ended_comments)             ///
-    maxwords(120)                            ///
-    minfreq(3)                               ///
-    title("Open-Ended Survey Responses")     ///
-    savefile("survey_wordcloud.html")
+calligram [aweight = weight], textvar(response) minfreq(1)
 ```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/12_weights.html"><img src="gallery/12_weights.png" alt="Weighted cloud" width="100%"></a>
+
+### Colour with meaning
+
+By default colours just tell words apart. Three options make them carry information. A key appears under the cloud and in pictures, and each word's hover card gives its value.
+
+#### By a number: `colorby(numeric variable)`
+Each word gets the average of the variable over the responses it appears in: a rating, a sentiment score, a year. `gradient(low high)` sets the colours.
+
+```stata
+use cg_inaugural, clear
+calligram, textvar(text) colorby(year) gradient(#d95f02 #5e3c99) phrases ///
+    maxwords(200) font(Merriweather) title("Inaugural addresses: words by average year")
+```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/16_colorby_year.html"><img src="gallery/16_colorby_year.png" alt="Words coloured by average year" width="100%"></a>
+
+#### By group: `colorby(categorical variable)`
+Each word takes the colour of the group it is **most typical of**: the one where it is used significantly more often than its overall rate predicts (95% confidence). Words used about evenly are grey, so a small group can't claim common words by chance. The hover card says how many times as often the word is used there. On the page, **click a group in the key to hide or show its words.**
+
+```stata
+calligram, textvar(text) colorby(century) phrases maxwords(200) font(Merriweather) ///
+    title("Inaugural addresses: words by century")
+```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/17_colorby_century.html"><img src="gallery/17_colorby_century.png" alt="Words coloured by century" width="100%"></a>
+
+String variables and labelled numeric variables are used as groups automatically. Add `, categories` for unlabelled codes.
+
+```stata
+sysuse auto, clear
+gen brand = word(make, 1)
+calligram, wordvar(brand) countvar(price) colorby(foreign) minfreq(1) nostopwords ///
+    shape(ellipse) font(Open Sans) bgcolor(white)
+```
+<a href="https://fahad-mirza.github.io/calligram_Stata/examples/18_colorby_foreign.html"><img src="gallery/18_colorby_foreign.png" alt="Car makes by origin" width="100%"></a>
+
+#### A colour for each word, or colours from a picture
+`colorvar()` (with `wordvar()`) takes a colour for each word, computed in Stata however you like. `colorimage()` gives each word the average colour of a picture under its letters. Here the picture is stripes drawn with `twoway bar`:
+
+```stata
+calligram, textvar(text) shape(heart) colorimage(stripes.png) ///
+    width(1000) height(900) maxwords(250) rotate(random) bgcolor(white)
+```
+<p align="center"><a href="https://fahad-mirza.github.io/calligram_Stata/examples/19_colorimage.html"><img src="gallery/19_colorimage.png" alt="Heart coloured from stripes" width="60%"></a></p>
+
+### Results and speed
+
+#### The cloud as a dataset
+`saving()` keeps every word with its rank, count, size, position, rotation and colour, plus colour values or groups with `colorby()`.
+
+```stata
+use cg_inaugural, clear
+calligram, textvar(text) phrases maxwords(100) saving(words, replace)
+use words, clear
+list rank word count fontsize in 1/10
+```
+```
+  +--------------------------------------+
+  | rank         word   count   fontsize |
+  |--------------------------------------|
+  |    1       people     642        290 |
+  |    2   government     574        275 |
+  |    3       nation     549        259 |
+  |    4      country     367        200 |
+  |    5        great     352        175 |
+  ...
+```
+
+#### Big text, quickly
+Counting runs on all processor cores (`threads()`). Times are from Stata 19 MP on an 8-core Windows machine, for the whole command:
+
+| Text | Words counted | Time |
+|---|---:|---:|
+| 100,000 survey responses | 662,500 | 0.56 s |
+| 50 copies of every inaugural address (81,800 paragraphs) | 2,970,650 | 0.65 s |
+| the same, finding two-word phrases | 2,571,350 | 0.82 s |
+| world map: 1,207 cities in 241 countries | | about 2.5 s |
+
+#### Smaller pages with `online`
+By default each word is stored as its exact letter outline, so the page looks identical everywhere and needs no internet connection. `online` writes words as text and loads the font from Google Fonts instead: much smaller files, but it needs an internet connection.
+
+---
+
+## The interactive page
+
+Every cloud is a single self-contained HTML file. Open it in any browser and send it to anyone: nothing else is needed.
+
+| | |
+|---|---|
+| **Search** | Type to highlight matching words (press <kbd>/</kbd>) |
+| **Minimum count** | A slider hides words below a count |
+| **Top words** | A ranked list with bars; click a word to hide or show it |
+| **Hover card** | A word's count, rank, share of all mentions, and its value or group with `colorby()` |
+| **Zoom and pan** | Scroll to zoom, drag to move, <kbd>0</kbd> to reset; the zoomed cloud uses the whole window |
+| **Colour key** | With `colorby()` groups, click a group to hide or show its words |
+| **Tabs** | One per group with `by()` (<kbd>←</kbd> <kbd>→</kbd> to switch) |
+| **Themes and palettes** | Light or dark background; switch palettes (<kbd>C</kbd>) unless colours carry meaning |
+| **Save** | PNG, SVG or JPG of what's shown |
+| **Help** | <kbd>?</kbd> lists all keyboard shortcuts |
+
+`notoolbar` gives a plain page with no side panel, and `export(png)` then adds a single save button. `fixed` shows the cloud at its exact pixel size instead of fitting it to the window.
+
+---
+
+## Options
+
+Full details: `help calligram`.
+
+**Input**
+
+| Option | What it does |
+|---|---|
+| `textvar(varname)` | string variable of free text |
+| `wordvar(varname)` `countvar(varname)` | words or phrases you've already counted, and their counts (default 1 per row) |
+| `by(varname)` | one cloud per group, as tabs |
+| `[aweight]` `[fweight]`, `if`, `in` | weights and sample selection |
+
+**Words**
+
+| Option | What it does | Default |
+|---|---|---|
+| `maxwords(#)` | most words to show | 100 |
+| `minfreq(#)` | fewest occurrences for a word to be shown | 2 |
+| `minlength(#)` | shortest word | 3 |
+| `language(list)` | stopword languages: `en fr es pt all` | `en` |
+| `stopwords(list)` | extra words to remove | |
+| `nostopwords` | keep all words | |
+| `noclean` | keep case and punctuation | |
+| `splithyphens` | split hyphenated words (*sci-fi* becomes *sci fi*) | kept whole |
+| `noplurals` | don't merge plurals with singulars | merged |
+| `phrases` | find two-word phrases | |
+| `phrasestrength(#)` | how strongly the words must belong together | 0.4 |
+| `addphrases(list)` `dropphrases(list)` | phrases always or never joined | |
+
+**Shape and layout**
+
+| Option | What it does | Default |
+|---|---|---|
+| `shape(name)` | rectangle, ellipse, circle, square, cloud, heart, diamond, triangle, star | rectangle |
+| `mask(file)` | fill the dark area of a picture (PNG, JPG, GIF, BMP) | |
+| `shapes(file_shp.dta)` | areas from a Stata-format shapefile | |
+| `location(lat lon)` `near` | each word in the area containing its point; `near` keeps it close to the point | |
+| `regions(varname)` | keep each word inside its own area | |
+| `projection(name)` | auto, equalearth or none | auto |
+| `outline` `outlinecolor()` `outlinewidth()` | draw the edge of the shape, mask or areas | |
+| `width(#)` `height(#)` | canvas size in pixels | 1600 × 800 |
+| `rotate(mode)` | none, 90 or random | none |
+| `margin(#)` `spacing(#)` | gap between words in pixels, and extra clearance as a share of font size | 4, 0 |
+| `minfontsize(#)` `maxfontsize(#)` `scaling(#)` | size range, and how strongly size follows count (0 to 1) | 8, automatic, 0.5 |
+| `seed(#)` | a different arrangement | 42 |
+| `threads(#)` | processor cores (0 = all) | 0 |
+
+**Colour and look**
+
+| Option | What it does | Default |
+|---|---|---|
+| `palette(name)` | any palette from Ben Jann's `colorpalette` | built-in |
+| `gradient(c1 c2)` | from most to least frequent, or low to high with `colorby()` | |
+| `colorby(varname[, categories])` | colour by a number (average) or by group (most typical) | |
+| `colorvar(varname)` | a colour for each word (with `wordvar()`) | |
+| `colorimage(file)` | colours from a picture | |
+| `bgcolor(color)` | background | `#16213e` |
+| `font(name)` | font for measuring and drawing | Arial |
+| `title("text"[, color() size()])` | page title | "Word Cloud" |
+
+Colours can be hex (`#4e79a7`), `rgb(78,121,167)` or CSS names (`navy`, `tomato`).
+
+**Output**
+
+| Option | What it does | Default |
+|---|---|---|
+| `savefile(file.html)` | the interactive page | `calligram.html` |
+| `image(file[, replace scale(#)])` | also a PNG, JPG or SVG picture | |
+| `saving(file[, replace])` | the words, counts, sizes, positions and colours as a dataset | |
+| `online` | words as text with Google Fonts (smaller files) | outlines, offline |
+| `notoolbar` `export(fmt)` `fixed` | plain page, a single save button, exact pixel size | |
+
+## Stored results
+
+`r(N_obs)` (rows used), `r(N_words)` (words after filtering), `r(N_placed)` (words placed), `r(N_phrases)`, `r(N_groups)`, `r(maxfontsize)`, `r(savefile)`, `r(image)`, `r(saving)`, `r(shape)`, `r(java)` (1 if the Java engine was used), `r(online)`, `r(outline)`, `r(toolbar)`.
 
 ---
 
 ## How it works
 
-`wordcloud2` processes text in ten sequential steps. Your dataset is never modified — the command uses `preserve`/`restore` throughout.
+1. **Counting** (Java, all cores): text is lower-cased and cleaned; contractions, accents, hyphens and French elisions are handled; stopwords are removed; plurals are merged with their singulars; and phrases are found with a likelihood-ratio test and a pointwise mutual information score.
+2. **Sizing:** font sizes follow `count ^ scaling` and are fitted so that nearly all mentions fit in the shape.
+3. **Packing:** each word is drawn as a pixel mask of its real letters and placed along a spiral at the first spot where no pixel touches another word. With areas (`shapes()`, `regions()`), each word is placed inside its own area, nearest its point with `near`.
+4. **Writing:** the page stores each word's exact letter outline, or text with `online`. The same outlines produce the PNG, JPG and SVG pictures, so the picture matches the page exactly.
 
-1. **Concatenation** - all observations are joined into a single string via a Mata routine (`wc_concat_rows`), avoiding Stata macro length limits
-2. **Cleaning** - text is lowercased and non-alphabetic characters are replaced with spaces (suppressed by `noclean`)
-3. **Tokenisation** - the master string is split on whitespace using Mata's `tokens()`, giving one word per observation
-4. **Stopword filtering** - the built-in English stopword list is applied (suppressible via `nostopwords`), plus any words in `stopwords()`; words below `minlength` are dropped
-5. **Frequency counting** - unique words are counted with `contract`, filtered by `minfreq`, sorted descending, and capped at `maxwords`
-6. **Font sizing** - sizes are linearly mapped on the **square root** of frequency onto [`minfontsize`, `maxfontsize`], so rare words stay legible
-7. **Bounding boxes** - each word's pixel box is estimated from font size and character count, padded by `margin`
-8. **Layout** - a Mata routine (`wc_place_words`) places words largest-first along an Archimedean spiral from the canvas centre, with AABB collision detection; unplaceable words are silently omitted
-9. **Color assignment** - colors come from `colorpalette` if installed and `palette()` is set, otherwise from the built-in ten-color palette
-10. **HTML output** - a self-contained HTML file is written with the SVG cloud, hover tooltip JavaScript, and (if `export()` is set) the in-browser raster or SVG export function
+If Java isn't available, a simpler Mata layout is used instead (rectangles only).
 
----
+## Requirements and troubleshooting
 
-## Requirements
+- **Stata 17 or newer.** Java is part of Stata, so there's nothing to install.
+- **`r(java) == 0`** means the Java engine didn't run. Check that `calligram.jar` was installed (`which calligram`, then look for the JAR in the same folder) and reinstall with `replace`.
+- **Words did not fit:** the Results window says how many. A larger canvas (`width()`, `height()`), a smaller `minfontsize()` or fewer `maxwords()` helps. On maps, small countries fill first.
+- **Characters from other scripts** (Greek, Cyrillic, Arabic, Chinese and more) are drawn with a fallback font when the chosen font lacks them.
+- **Large maps** make large pages (about 3 MB for 1,200 cities on a world map). They open in any browser.
 
-| Requirement | Version / Notes |
-|---|---|
-| Stata | 15 or later (`ustrregexra` and `strL` support required) |
-| colorpalette | Optional - for `palette()` option; install via `ssc install palettes` |
-| colrspace | Optional - required by colorpalette; install via `ssc install colrspace` |
+## FAQ
 
----
+**Can I use my own shapefile?** Yes. Convert it with `spshape2dta` and pass the `_shp.dta` file to `shapes()`. Each area becomes a region. Use `location()` for points, or `regions()` for an area ID per word.
 
-## Repository structure
+**Can I put the cloud in a report?** Use `image(file.png, replace scale(2))` for a high-resolution picture, `image(file.svg)` for vector graphics, or the page's save buttons.
 
-```
-wordcloud2_stata/
-├── wordcloud2.ado          # Main command
-├── wordcloud2.sthlp        # Stata helpfile (type: help wordcloud2)
-├── wordcloud2.pkg          # Package manifest (required for net install)
-├── stata.toc               # Repository index (required for net install)
-├── wordcloud2_example.do   # Example do-file with synthetic data
-├── screenshots/
-│   ├── Wordcloud_Example_1.png   # Default dark-background output
-│   └── Wordcloud_Example_2.png   # Interactive tooltip on hover
-└── README.md
-```
+**Does it work offline?** Yes. Pages contain everything they need. Only `online` loads fonts from the internet.
 
----
+**Why is a word grey with `colorby()`?** It isn't clearly more typical of any one group (or has no value). That's deliberate, so that small groups don't claim common words by chance.
 
-## Authors
+## Example data
 
-**Fahad Mirza** (Author and Developer)
+Copied by `net get calligram`:
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/fahad-mirza/)
-[![Medium](https://img.shields.io/badge/Blog-000000?style=flat&logo=medium&logoColor=white)](https://medium.com/@fahad-mirza)
-[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/fahad-mirza/)
+| File | Contents | Source |
+|---|---|---|
+| `cg_inaugural.dta` | US presidential inaugural addresses 1789-2025, one row per paragraph | public domain |
+| `cg_alice.dta` | *Alice's Adventures in Wonderland*, one row per paragraph | Project Gutenberg, public domain |
+| `cg_cities.dta` | 1,207 cities with latitude, longitude, population, country and continent | Natural Earth, public domain |
+| `cg_countries.dta`, `cg_countries_shp.dta` | 241 countries in Stata shapefile format | Natural Earth, public domain |
 
-**Claude** (Anthropic) | Editor and co-developer. 
+## Credits and licence
 
----
+Author: **Fahad Mirza**. Bundled fonts (Arimo, Tinos, Roboto, Open Sans, Lato, Noto Sans, Merriweather) are used under their open licences, included in the JAR. Map data © Natural Earth (public domain).
 
-## Note
-
-`wordcloud2` is currently in **Beta**. The core functionality is stable but improvements, new options, and refinements are planned over time. Feedback and bug reports are welcome - please open an issue on this repository.
-
-This program was built collaboratively between the author and Claude, which assisted with algorithm implementation, debugging, and feature development throughout.
-
----
-
-## License
-
-See [LICENSE](LICENSE) for details.
-
----
-
-*Also see: [colorpalette documentation](https://repec.sowi.unibe.ch/stata/palettes/) by Ben Jann*
+Please report bugs and ideas in [Issues](https://github.com/fahad-mirza/calligram_Stata/issues). See [LICENSE](LICENSE) for the licence.

@@ -1,7 +1,6 @@
 v 3
-d wordcloud2_stata package repository
+d calligram package repository
 d Fahad Mirza
-d https://github.com/fahad-mirza/wordcloud2_stata
+d https://github.com/fahad-mirza/calligram_Stata
 
-p wordcloud2 Interactive word cloud generator for Stata
-e
+p calligram Word clouds in any shape, from survey text to maps
