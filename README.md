@@ -4,7 +4,7 @@
 <p align="center">
 <a href="https://fahad-mirza.github.io/calligram_Stata/"><img alt="Live gallery" src="https://img.shields.io/badge/live%20gallery-open-4e79a7"></a>
 <img alt="Stata 17+" src="https://img.shields.io/badge/Stata-17%2B-1a5f91">
-<img alt="Version 1.0.4" src="https://img.shields.io/badge/version-1.0.8%20beta-f28e2b">
+<img alt="Version 1.0.4" src="https://img.shields.io/badge/version-1.0.10%20beta-f28e2b">
 <img alt="Nothing else to install" src="https://img.shields.io/badge/dependencies-none-59a14f">
 </p>
 
@@ -205,6 +205,18 @@ calligram if continent == "Africa", wordvar(city) countvar(population) ///
 ```
 <p align="center"><a href="https://fahad-mirza.github.io/calligram_Stata/examples/07_africa.html"><img src="gallery/07_africa.png" alt="Africa" width="55%"></a></p>
 
+#### ... with words turned to fill each country
+A word in an area can be no wider than the area, so large countries with few cities in the data (Chad, Madagascar) look empty with horizontal words. `rotate(random)` lets words run along tall or narrow countries and fills them better; horizontal words are easier to read, so this is a choice, not the default.
+
+```stata
+calligram if continent == "Africa", wordvar(city) countvar(population) ///
+    shapes(africa_shp.dta) location(lat lon) outline rotate(random)     ///
+    width(900) height(1280) minfreq(1) minfontsize(5) margin(2) font(Lato)
+```
+<p align="center"><a href="https://fahad-mirza.github.io/calligram_Stata/examples/07b_africa_turned.html"><img src="gallery/07b_africa_turned.png" alt="Africa with turned words" width="55%"></a></p>
+
+**Small and thin countries.** Even without `rotate()`, a word that does not fit across a narrow country is turned to run along it (Lilongwe in Malawi, Lomé in Togo), and a word that fits nowhere with the usual clearance from coasts and borders is placed closer to the lines (Seoul, Lisbon, Taipei on the world map). Countries too small for any name at `minfontsize()` stay empty, and the Results window lists the places that did not fit, so a larger canvas or a smaller `minfontsize()` can bring them in.
+
 ### Working with text
 
 #### Two-word phrases
@@ -371,7 +383,7 @@ Counting runs on all processor cores (`threads()`). Times are from Stata 19 MP o
 | 100,000 survey responses | 662,500 | 0.56 s |
 | 50 copies of every inaugural address (81,800 paragraphs) | 2,970,650 | 0.65 s |
 | the same, finding two-word phrases | 2,571,350 | 0.82 s |
-| world map: 1,207 cities in 241 countries | | about 2.5 s |
+| world map: 1,207 cities in 241 countries | | about 3 to 4 s |
 
 #### Smaller pages with `online`
 By default each word is stored as its exact letter outline, so the page looks identical everywhere and needs no internet connection. `online` writes words as text and loads the font from Google Fonts instead: much smaller files, but it needs an internet connection.

@@ -1,4 +1,4 @@
-* calligram_gallery.do  —  the example gallery for calligram (v1.0.8)
+* calligram_gallery.do  —  the example gallery for calligram (v1.0.10)
 *
 * Builds every example shown in the README: for each one an interactive HTML
 * page and a PNG image (written by calligram itself, with the image() option),
@@ -161,6 +161,17 @@ calligram if continent == "Africa", wordvar(city) countvar(population)     ///
     width(900) height(1280) maxwords(500) minfreq(1) minfontsize(5) margin(2)    ///
     font(Lato) title("Africa's cities") savefile(gallery/07_africa.html)         ///
     image(gallery/07_africa.png, replace scale(1))
+
+* 7b. ... with words turned to fill each country: rotate(random) lets words
+*     run along tall or narrow countries (Chad, Madagascar, Mozambique), so
+*     large countries with few cities are less empty. (Without rotate(), a word
+*     that does not fit across a narrow country is still turned to fit along
+*     it, as Lilongwe in Malawi and Lomé in Togo.)
+calligram if continent == "Africa", wordvar(city) countvar(population)     ///
+    shapes(gallery/cg_africa_shp.dta) location(lat lon) outline outlinewidth(1) ///
+    width(900) height(1280) maxwords(500) minfreq(1) minfontsize(5) margin(2)    ///
+    rotate(random) font(Lato) title("Africa's cities, turned to fill each country") ///
+    savefile(gallery/07b_africa_turned.html) image(gallery/07b_africa_turned.png, replace scale(1))
 
 * 8. Two-word phrases: US inaugural addresses, 1789-2025 ---------------------
 *    phrases joins pairs such as "united states" and "fellow citizens";

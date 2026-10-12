@@ -100,6 +100,8 @@ public final class Engine {
     public Shapes shapes() { return shapesObj; }
     private boolean[] interior;            // pixel far enough from any region border
     private final Map<Integer, Bits> notRegion = new HashMap<>();   // colour -> everything outside it
+    private final Map<Integer, Bits> notRegionLoose = new HashMap<>();  // the same, without the clearances
+    private final Map<Integer, int[]> regionBoxLoose = new HashMap<>();
     private final Map<Integer, int[]> regionBox = new HashMap<>();  // colour -> x0, y0, x1, y1 of its room
     public final String warning;
     /** SVG path data ("d" attribute) of the shape outline, or "" if none. */
@@ -120,6 +122,7 @@ public final class Engine {
         this.warning = rf.note;
 
         boolean[] a0;
+        boolean[] a0raw = null;   // the land as drawn, before the clearance from outlines
         if (!p.shapes.isEmpty()) {
             shapesObj = new Shapes(p.shapes, p.projection, W, H);
             a0 = new boolean[W * H];
@@ -145,14 +148,19 @@ public final class Engine {
                 : (p.regions && maskRGB != null ? regionBorders() : tracePath(a0));
             // Keep words clear of the line: shrink the usable area by half the
             // stroke width plus 2 px
+            a0raw = a0;
             a0 = erode(a0, (int) Math.ceil(p.outline / 2.0) + 2);
         } else {
             this.outlineSvg = "";
         }
         this.allowed = a0;
-        // starting canvas for every layout pass: occupied outside the shape
+        // starting canvas for every layout pass: occupied outside the shape.
+        // With areas, each word is already kept inside its own area (with the
+        // clearances) by its area mask, so the starting canvas uses the land as
+        // drawn; the last resort for small countries can then use their pixels.
+        boolean[] baseMask = (p.regions && maskRGB != null && a0raw != null) ? a0raw : a0;
         this.base = new Bits(W, H);
-        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if (!a0[y * W + x]) base.set(x, y);
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if (!baseMask[y * W + x]) base.set(x, y);
         int c = 0;
         for (boolean b : allowed) if (b) c++;
         this.allowedCount = c;
@@ -447,6 +455,7 @@ public final class Engine {
             Bits outside = null;
             if (reg != null) {
                 outside = reg[i] < 0 ? null : notRegion.get(reg[i]);
+                if (outside == null && reg[i] >= 0) outside = notRegionLoose.get(reg[i]);   // only its own pixels left
                 if (outside == null) { last = f; lastSize = planned; continue; }   // region not in the mask
             }
             int pref = preferred(i, rng);
@@ -458,7 +467,7 @@ public final class Engine {
             if (outside != null) {
                 // the largest size (and an orientation) at which the word fits
                 // in its region: the planned size, else bisection down to minFont
-                int[] box = regionBox.get(reg[i]);
+                int[] box = regionBox.containsKey(reg[i]) ? regionBox.get(reg[i]) : regionBoxLoose.get(reg[i]);
                 double[] target = (p.near && pt != null) ? pt[i] : null;
                 // near: the search widens in steps - within about the word's own
                 // size of its point, then 3 and 8 times that - and at each step the
@@ -467,15 +476,36 @@ public final class Engine {
                 // before full size.
                 Object[] hit = null;
                 double[] reaches = target == null ? new double[]{0} : new double[]{1, 3, 8, 0};
-                for (int st = 0; st < reaches.length && hit == null; st++) {
-                    double rf = reaches[st];
-                    hit = fitInRegion(words[i], size, pref, outside, box, occ, scan, rng, m, target, rf);
-                    if (hit == null) {
-                        int lo = p.minFont, hi = size - 1;
-                        while (lo <= hi) {
-                            int mid = (lo + hi) >>> 1;
-                            Object[] h2 = fitInRegion(words[i], mid, pref, outside, box, occ, scan, rng, m, target, rf);
-                            if (h2 != null) { hit = h2; lo = mid + 1; } else hi = mid - 1;
+                // without rotate(): a word that fits nowhere in its area across,
+                // at any size, is tried turned 90 degrees (narrow countries)
+                int turns = p.rotate.equals("none") ? 2 : 1;
+                for (int t = 0; t < turns && hit == null; t++) {
+                    boolean turn = t == 1;
+                    for (int st = 0; st < reaches.length && hit == null; st++) {
+                        double rf = reaches[st];
+                        hit = fitInRegion(words[i], size, pref, outside, box, occ, scan, rng, m, target, rf, turn);
+                        if (hit == null) {
+                            int lo = p.minFont, hi = size - 1;
+                            while (lo <= hi) {
+                                int mid = (lo + hi) >>> 1;
+                                Object[] h2 = fitInRegion(words[i], mid, pref, outside, box, occ, scan, rng, m, target, rf, turn);
+                                if (h2 != null) { hit = h2; lo = mid + 1; } else hi = mid - 1;
+                            }
+                        }
+                    }
+                }
+                // last resort: the area's own pixels, without the clearances from
+                // coasts and borders (small or thin countries: Belgium, South Korea)
+                if (hit == null && notRegionLoose.containsKey(reg[i])) {
+                    Bits lo = notRegionLoose.get(reg[i]);
+                    int[] lbox = regionBoxLoose.get(reg[i]);
+                    for (int t = 0; t < (p.rotate.equals("none") ? 2 : 1) && hit == null; t++) {
+                        boolean turn = t == 1;
+                        int lo2 = p.minFont, hi2 = size;
+                        while (lo2 <= hi2) {
+                            int mid = (lo2 + hi2) >>> 1;
+                            Object[] h2 = fitInRegion(words[i], mid, pref, lo, lbox, occ, scan, rng, m, target, 0, turn);
+                            if (h2 != null) { hit = h2; lo2 = mid + 1; } else hi2 = mid - 1;
                         }
                     }
                 }
@@ -539,11 +569,11 @@ public final class Engine {
     /** Try a word at one size in its region (both orientations if rotation is
      *  allowed): {size, orientation, position, ink, box width, box height}, or null. */
     private Object[] fitInRegion(String word, int size, int pref, Bits outside, int[] box,
-                                 Bits occ, Scan scan, Random rng, int m, double[] target, double reachFactor) {
+                                 Bits occ, Scan scan, Random rng, int m, double[] target, double reachFactor, boolean turn) {
         if (box == null) return null;
         Rectangle2D ink = ink(word, size);
         int iw = (int) Math.ceil(ink.getWidth()), ih = (int) Math.ceil(ink.getHeight());
-        int[] orients = p.rotate.equals("none") ? new int[]{pref} : new int[]{pref, 90 - pref};
+        int[] orients = p.rotate.equals("none") ? new int[]{turn ? 90 - pref : pref} : new int[]{pref, 90 - pref};
         for (int orient : orients) {
             int bw = (orient == 0 ? iw : ih) + m, bh = (orient == 0 ? ih : iw) + m;
             int x0 = Math.max(0, box[0] - m), y0 = Math.max(0, box[1] - m);
@@ -612,6 +642,23 @@ public final class Engine {
             made.put(c, b);
         }
         Map<Integer, int[]> boxes = new HashMap<>();
+        // the areas' own pixels, with no clearance from coasts or borders: a last
+        // resort for a word that fits nowhere in its area otherwise
+        Map<Integer, Bits> loose = new HashMap<>();
+        for (int c : want) { Bits b = new Bits(W, H); java.util.Arrays.fill(b.b, -1L); loose.put(c, b); }
+        for (int y = 0; y < H; y++) {
+            for (int x = 0; x < W; x++) {
+                int i = y * W + x;
+                Bits lb = loose.get(maskRGB[i]);
+                if (lb != null) {
+                    lb.b[y * lb.WW + (x >>> 6)] &= ~(1L << (x & 63));
+                    int[] bx = regionBoxLoose.get(maskRGB[i]);
+                    if (bx == null) regionBoxLoose.put(maskRGB[i], new int[]{x, y, x, y});
+                    else { if (x < bx[0]) bx[0] = x; if (y < bx[1]) bx[1] = y; if (x > bx[2]) bx[2] = x; if (y > bx[3]) bx[3] = y; }
+                }
+            }
+        }
+        notRegionLoose.putAll(loose);
         for (int y = 0; y < H; y++) {
             for (int x = 0; x < W; x++) {
                 int i = y * W + x;

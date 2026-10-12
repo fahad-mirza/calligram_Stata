@@ -1,5 +1,5 @@
 {smcl}
-{* *! calligram v1.0.8 (Beta)  Fahad Mirza & Claude  11oct2026}{...}
+{* *! calligram v1.0.10 (Beta)  Fahad Mirza & Claude  11oct2026}{...}
 {viewerjumpto "Syntax" "calligram##syntax"}{...}
 {viewerjumpto "Description" "calligram##description"}{...}
 {viewerjumpto "Options" "calligram##options"}{...}
@@ -479,6 +479,14 @@ point inside its area, so the cloud keeps the geography (west coast cities in th
 west). A word first shrinks until it fits close to its point; only if it cannot,
 even at {cmd:minfontsize()}, does it go to the nearest free spot in its area.
 Without {cmd:near}, words go anywhere in their area.
+In areas, a word's size is limited by the room it has: a word can be no wider
+than its area. Without {cmd:rotate()}, a word that does not fit across its area
+at any size is turned to run along it (a narrow country such as Malawi). With
+{cmd:rotate(random)} or {cmd:rotate(90)}, words can run along tall or narrow areas,
+so large areas with few words are filled better. Words keep a small clearance from coasts and borders; a word that fits nowhere
+with it is placed in its area's own pixels, closer to the lines. Areas too small
+for any word at {cmd:minfontsize()} stay empty; the words that did not fit are listed in the
+Results window.
 
 {phang}
 {cmdab:reg:ions(}{it:varname}{cmd:)} keeps each word inside its own area. With

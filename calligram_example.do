@@ -1,4 +1,4 @@
-* calligram_example.do  —  examples and self-checks for calligram v1.0.8
+* calligram_example.do  —  examples and self-checks for calligram v1.0.10
 * Run the whole file. Every check uses -assert-, so it stops at the first
 * problem; reaching the final message means everything passed.
 * HTML files are written to the current working directory.
@@ -470,6 +470,37 @@ if `hasshp' & _rc == 0 {
             capture confirm string variable region
             if _rc == 0 quietly count if word == "`c'" & placed == 1 & region == "`pid'"
             else quietly count if word == "`c'" & placed == 1 & region == `pid'
+            assert r(N) == 1
+        }
+        * narrow countries keep their cities: a word that does not fit across
+        * its country is turned to run along it (Malawi, Togo on the Africa map)
+        use cg_countries, clear
+        keep if continent == "Africa"
+        keep _ID
+        merge 1:m _ID using cg_countries_shp, keep(match) nogenerate
+        sort _ID shape_order
+        save cg_af_shp, replace
+        use cg_cities, clear
+        calligram if continent == "Africa", wordvar(city) countvar(population) minfreq(1) ///
+            shapes(cg_af_shp.dta) location(lat lon) width(900) height(1280) maxwords(500)  ///
+            minfontsize(5) margin(2) font(Lato) saving(cg_af, replace) savefile(cg_africa_test.html)
+        use cg_af, clear
+        foreach c in "Lilongwe" "Lomé" {
+            quietly count if word == "`c'" & placed == 1
+            assert r(N) == 1
+        }
+        * small and thin countries keep their cities on the world map: a word that
+        * fits nowhere with the usual clearance from coasts and borders is placed
+        * in the country's own pixels (South Korea, Portugal, Taiwan); at this
+        * scale some thin countries fit only short names (New Zealand's islands are
+        * about 10 pixels across, too narrow for "Auckland" even at minfontsize(4))
+        use cg_cities, clear
+        calligram, wordvar(city) countvar(population) shapes(cg_countries_shp.dta) location(lat lon) ///
+            outline outlinewidth(1) width(2400) height(1067) maxwords(1207) minfreq(1) minfontsize(4)  ///
+            margin(2) font(Lato) saving(cg_world, replace) savefile(cg_world_test.html)
+        use cg_world, clear
+        foreach c in "Seoul" "Lisbon" "Taipei" {
+            quietly count if word == "`c'" & placed == 1
             assert r(N) == 1
         }
         * near: Australia's cities as close as possible to where they are

@@ -1,4 +1,4 @@
-*! calligram v1.0.8  12oct2026  (formerly wordcloud2 3.5)
+*! calligram v1.0.10  12oct2026  (formerly wordcloud2 3.5)
 *! Word clouds in any shape, from survey text to maps (HTML, PNG, JPG, SVG)
 *! Author: Fahad Mirza | Editor: Claude (Anthropic)
 *!
@@ -921,7 +921,7 @@ program define calligram, rclass
                  dropfile=`_jdrop' pframe=`_jpf' precounted=`_pre'            ///
                  weight=`=("`weight'" != "")' paths=`=(`"`_img'"' != "")' ///
                  regionmode=`_rmode' shapesfile=`_jshp' projection=`_proj' ///
-                 near=`=("`near'" != "")' colormode=`_cjm' colork=`_cK'      ///
+                 near=`=("`near'" != "")' colormode=`_cjm' colork=`_cK' ///
                  colorpos=`_cpos' colorimage=`_jcimg' scriptfonts=`_jsf')
         local _jrc = _rc
         if `_jrc' == 0 {
@@ -1083,6 +1083,27 @@ program define calligram, rclass
             capture frame drop `wcs'
             frame copy `_fr' `wcs'
         }
+        // on maps, name the words that did not fit (the largest first), so
+        // it is clear which places are missing
+        local _miss ""
+        local _nmiss = 0
+        if "`regions'`location'" != "" & `nplaced' < `nwords' {
+            `F' quietly count if !placed
+            local _nmiss = r(N)
+            `F' local _nn = _N
+            local _k = 0
+            forvalues _r = 1/`_nn' {
+                if `_k' < 12 {
+                    `F' local _p = placed[`_r']
+                    if `_p' == 0 {
+                        `F' local _w = word[`_r']
+                        if `_k' == 0 local _miss `"`_w'"'
+                        else local _miss `"`_miss', `_w'"'
+                        local ++_k
+                    }
+                }
+            }
+        }
         `F' quietly keep if placed
         if `nplaced' == 0 {
             if "`by'" == "" {
@@ -1099,6 +1120,10 @@ program define calligram, rclass
             if "`regions'`location'" != "" {
                 di as text "  (`=`nwords'-`nplaced'' words did not fit in their own area even at minfontsize(`minfontsize');"
                 di as text "   small or crowded areas fill first; a larger canvas or a smaller minfontsize() would fit more)"
+                if `"`_miss'"' != "" {
+                    local _more = cond(`_nmiss' > 12, ", ... and `=`_nmiss'-12' more", "")
+                    di as text `"   not placed: `_miss'`_more'"'
+                }
             }
             else {
                 di as text "  (`=`nwords'-`nplaced'' rarely used words did not fit even at minfontsize(`minfontsize');"

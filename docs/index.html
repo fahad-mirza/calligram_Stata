@@ -77,7 +77,12 @@ save africa_shp, replace
 use cg_cities, clear
 calligram if continent == &quot;Africa&quot;, wordvar(city) countvar(population) ///
     shapes(africa_shp.dta) location(lat lon) outline width(900) height(1280)</code></pre></details>
-<a class="open" href="examples/07_africa.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/08_inaugural.html"><img src="thumbs/08_inaugural.jpg" alt="Two-word phrases" loading="lazy"></a>
+<a class="open" href="examples/07_africa.html">Open the interactive page &rarr;</a></div></article><article class="card"><a class="pic" href="examples/07b_africa_turned.html"><img src="thumbs/07b_africa_turned.jpg" alt="Africa with turned words" loading="lazy"></a>
+<div class="body"><h3>... with words turned to fill each country</h3><p>rotate(random) lets city names run along tall or narrow countries, so countries with few cities are less empty.</p>
+<details><summary>Stata code</summary><pre><code>calligram if continent == &quot;Africa&quot;, wordvar(city) countvar(population) ///
+    shapes(africa_shp.dta) location(lat lon) outline rotate(random)</code></pre></details>
+<a class="open" href="examples/07b_africa_turned.html">Open the interactive page &rarr;</a></div></article>
+<article class="card"><a class="pic" href="examples/08_inaugural.html"><img src="thumbs/08_inaugural.jpg" alt="Two-word phrases" loading="lazy"></a>
 <div class="body"><h3>Two-word phrases</h3><p>phrases finds pairs such as &quot;united states&quot; and &quot;fellow citizens&quot; and shows each as one entry.</p>
 <details><summary>Stata code</summary><pre><code>use cg_inaugural, clear
 calligram, textvar(text) phrases maxwords(200) font(Merriweather) ///
