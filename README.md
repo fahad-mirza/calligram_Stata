@@ -4,7 +4,7 @@
 <p align="center">
 <a href="https://fahad-mirza.github.io/calligram_Stata/"><img alt="Live gallery" src="https://img.shields.io/badge/live%20gallery-open-4e79a7"></a>
 <img alt="Stata 17+" src="https://img.shields.io/badge/Stata-17%2B-1a5f91">
-<img alt="Version 1.0.4" src="https://img.shields.io/badge/version-1.0.10%20beta-f28e2b">
+<img alt="Version 1.0.4" src="https://img.shields.io/badge/version-1.0.11%20beta-f28e2b">
 <img alt="Nothing else to install" src="https://img.shields.io/badge/dependencies-none-59a14f">
 </p>
 
@@ -400,7 +400,7 @@ Every cloud is a single self-contained HTML file. Open it in any browser and sen
 | **Minimum count** | A slider hides words below a count |
 | **Top words** | A ranked list with bars; click a word to hide or show it |
 | **Hover card** | A word's count, rank, share of all mentions, and its value or group with `colorby()` |
-| **Zoom and pan** | Scroll to zoom, drag to move, <kbd>0</kbd> to reset; the zoomed cloud uses the whole window |
+| **Zoom and pan** | Scroll to zoom, drag to move, <kbd>0</kbd> to reset; the zoomed cloud uses the whole window. On maps and large clouds the picture moves smoothly while you scroll and sharpens as soon as you pause |
 | **Colour key** | With `colorby()` groups, click a group to hide or show its words |
 | **Tabs** | One per group with `by()` (<kbd>←</kbd> <kbd>→</kbd> to switch) |
 | **Themes and palettes** | Light or dark background; switch palettes (<kbd>C</kbd>) unless colours carry meaning |

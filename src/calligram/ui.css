@@ -5,6 +5,9 @@ body.has-tabs .plabel{display:none}
 
 /* words: hover focus, load animation, zoom cursor */
 svg.wc .w{cursor:pointer;transition:opacity .18s}
+svg.wc.big .w{transition:none}          /* large clouds: no fades (each would redraw the whole map) */
+.wc-veil{position:fixed;display:none;pointer-events:none;background:var(--bg);opacity:.72;z-index:5}
+.wc-lift{position:fixed;display:none;pointer-events:none;z-index:6;overflow:visible}
 svg.wc .w .hit{fill:transparent}
 svg.wc.focusing .w:not(.hot){opacity:.25 !important}
 html.wc-pre svg.wc{opacity:0}   /* until the fade-in starts (see ui.js); the whole cloud, not each word,

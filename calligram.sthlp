@@ -1,5 +1,5 @@
 {smcl}
-{* *! calligram v1.0.10 (Beta)  Fahad Mirza & Claude  11oct2026}{...}
+{* *! calligram v1.0.11 (Beta)  Fahad Mirza & Claude  11oct2026}{...}
 {viewerjumpto "Syntax" "calligram##syntax"}{...}
 {viewerjumpto "Description" "calligram##description"}{...}
 {viewerjumpto "Options" "calligram##options"}{...}

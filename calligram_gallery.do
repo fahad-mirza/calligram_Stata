@@ -1,4 +1,4 @@
-* calligram_gallery.do  —  the example gallery for calligram (v1.0.10)
+* calligram_gallery.do  —  the example gallery for calligram (v1.0.11)
 *
 * Builds every example shown in the README: for each one an interactive HTML
 * page and a PNG image (written by calligram itself, with the image() option),

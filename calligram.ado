@@ -1,4 +1,4 @@
-*! calligram v1.0.10  12oct2026  (formerly wordcloud2 3.5)
+*! calligram v1.0.11  12oct2026  (formerly wordcloud2 3.5)
 *! Word clouds in any shape, from survey text to maps (HTML, PNG, JPG, SVG)
 *! Author: Fahad Mirza | Editor: Claude (Anthropic)
 *!

@@ -1,4 +1,4 @@
-* calligram_example.do  —  examples and self-checks for calligram v1.0.10
+* calligram_example.do  —  examples and self-checks for calligram v1.0.11
 * Run the whole file. Every check uses -assert-, so it stops at the first
 * problem; reaching the final message means everything passed.
 * HTML files are written to the current working directory.
@@ -443,6 +443,10 @@ local hasshp = (_rc == 0)
 capture confirm file cg_cities.dta
 if `hasshp' & _rc == 0 {
     preserve
+        * every city in the example data has its continent (maps select by it)
+        use cg_cities, clear
+        quietly count if continent == ""
+        assert r(N) == 0
         * a map of South America, cut from the world shapefile
         use cg_countries, clear
         quietly levelsof _ID if name == "Paraguay", local(pid)
@@ -485,7 +489,7 @@ if `hasshp' & _rc == 0 {
             shapes(cg_af_shp.dta) location(lat lon) width(900) height(1280) maxwords(500)  ///
             minfontsize(5) margin(2) font(Lato) saving(cg_af, replace) savefile(cg_africa_test.html)
         use cg_af, clear
-        foreach c in "Lilongwe" "Lomé" {
+        foreach c in "Lilongwe" "Lomé" "Juba" {
             quietly count if word == "`c'" & placed == 1
             assert r(N) == 1
         }

@@ -16,7 +16,7 @@ d engine runs on Stata's own Java (nothing else to install). Stata 17+.
 d
 d Example data and the gallery do-file: net get calligram
 d
-d Version 1.0.10 (Beta). Formerly wordcloud2 3.5.
+d Version 1.0.11 (Beta). Formerly wordcloud2 3.5.
 d KW: word cloud
 d KW: wordcloud
 d KW: text analysis

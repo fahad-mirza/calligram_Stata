@@ -39,6 +39,9 @@ body.has-tabs .plabel{display:none}
 
 /* words: hover focus, load animation, zoom cursor */
 svg.wc .w{cursor:pointer;transition:opacity .18s}
+svg.wc.big .w{transition:none}          /* large clouds: no fades (each would redraw the whole map) */
+.wc-veil{position:fixed;display:none;pointer-events:none;background:var(--bg);opacity:.72;z-index:5}
+.wc-lift{position:fixed;display:none;pointer-events:none;z-index:6;overflow:visible}
 svg.wc .w .hit{fill:transparent}
 svg.wc.focusing .w:not(.hot){opacity:.25 !important}
 html.wc-pre svg.wc{opacity:0}   /* until the fade-in starts (see ui.js); the whole cloud, not each word,
@@ -548,6 +551,21 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
   panes.forEach(function (p) {
     var svg = p.querySelector('svg.wc');
     p._svg = svg;
+    // a large cloud or a map: while zooming or dragging, move the drawn picture
+    // (fast, done by the graphics card) and redraw it sharp once movement stops
+    (function () {
+      var n = svg.querySelectorAll('.w').length, ol = 0;
+      var o = svg.querySelectorAll('path.outline');
+      for (var i = 0; i < o.length; i++) ol += (o[i].getAttribute('d') || '').length;
+      p._big = n > 300 || ol > 200000;
+      if (p._big) {
+        p._svg.classList.add('big');
+        // prepared once (not at the start of every zoom): a zoom then starts at once
+        p._svg.style.transformOrigin = '0 0';
+        p._svg.style.willChange = 'transform';
+        p._svg.style.transform = 'translate(0px,0px) scale(1)';
+      }
+    })();
     p._W = +svg.getAttribute('width');
     p._H = +svg.getAttribute('height');
     p._words = Array.prototype.slice.call(svg.querySelectorAll('.w'));
@@ -584,14 +602,48 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
   });
 
   // ── hover card and hover focus ────────────────────────────────────────────
+  // Large clouds (maps): the cloud itself is never redrawn on hover. A
+  // see-through layer covers it and a copy of the word is drawn on top, in a
+  // small picture of its own; the browser only redraws those two.
+  var veil = null, lift = null;
+  function liftLayers() {
+    if (veil) return;
+    veil = make('div', { 'class': 'wc-veil' });
+    lift = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    lift.setAttribute('class', 'wc-lift');
+    document.body.appendChild(veil);
+    document.body.appendChild(lift);
+  }
   function focusWord(w, on) {
     var svg = w.ownerSVGElement;
     if (!svg) return;
-    svg.classList.toggle('focusing', on);
-    w.classList.toggle('hot', on);
+    if (!svg.classList.contains('big')) {
+      svg.classList.toggle('focusing', on);
+      w.classList.toggle('hot', on);
+      return;
+    }
+    liftLayers();
+    if (!on) { veil.style.display = 'none'; lift.style.display = 'none'; while (lift.firstChild) lift.removeChild(lift.firstChild); return; }
+    var r = svg.getBoundingClientRect(), box = 'left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;';
+    veil.style.cssText = box + 'display:block';
+    lift.style.cssText = box + 'display:block;transform:' + (svg.style.transform || 'none') + ';transform-origin:0 0';
+    lift.setAttribute('viewBox', svg.getAttribute('viewBox'));
+    lift.setAttribute('preserveAspectRatio', svg.getAttribute('preserveAspectRatio') || 'xMidYMid meet');
+    while (lift.firstChild) lift.removeChild(lift.firstChild);
+    lift.appendChild(w.cloneNode(true));
+  }
+  var ttWord = null, ttW = 0, ttH = 0;
+  function placeCard(x, y) {
+    var left = x + 16, top = y + 16;
+    if (left + ttW > window.innerWidth - 8) left = x - ttW - 16;
+    if (top + ttH > window.innerHeight - 8) top = y - ttH - 16;
+    tt.style.left = left + 'px';
+    tt.style.top = top + 'px';
   }
   function showCard(w, x, y) {
     if (!tt) return;
+    if (w === ttWord && tt.style.display === 'block') { placeCard(x, y); return; }
+    ttWord = w;
     var p = pane(), c = +w.getAttribute('data-count');
     var share = p._total > 0 ? (100 * c / p._total) : 0;
     tt.innerHTML = '';
@@ -603,16 +655,14 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
     if (cfg.toolbar) tt.appendChild(make('div', { 'class': 'th' }, 'Click to hide'));
     tt.style.display = 'block';
     var r = tt.getBoundingClientRect();
-    var left = x + 16, top = y + 16;
-    if (left + r.width > window.innerWidth - 8) left = x - r.width - 16;
-    if (top + r.height > window.innerHeight - 8) top = y - r.height - 16;
-    tt.style.left = left + 'px';
-    tt.style.top = top + 'px';
+    ttW = r.width; ttH = r.height;
+    placeCard(x, y);
   }
-  function hideCard() { if (tt) tt.style.display = 'none'; }
+  function hideCard() { if (tt) tt.style.display = 'none'; ttWord = null; }
   var hot = null;
   doc.addEventListener('mousemove', function (ev) {
-    var t = drag ? null : wordOf(ev.target);
+    var zp = pane();
+    var t = (drag || (zp && zp._cvb)) ? null : wordOf(ev.target);
     var isWord = !!t;
     if (isWord) {
       if (hot !== t) { if (hot) focusWord(hot, false); hot = t; focusWord(t, true); }
@@ -764,27 +814,47 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
 
   // ── zoom and pan (by changing the SVG viewBox) ────────────────────────────
   function isZoomed(p) { return p._vb[2] < p._rv[2] - 0.5; }
-  function setVB(p) {
+  function commitVB(p) {
+    if (p._ct) { clearTimeout(p._ct); p._ct = null; }
     p._svg.setAttribute('viewBox', p._vb.map(function (v) { return Math.round(v * 100) / 100; }).join(' '));
+    if (p._cvb) { p._svg.style.transform = p._big ? 'translate(0px,0px) scale(1)' : ''; if (!p._big) p._svg.style.willChange = ''; p._cvb = null; }
+  }
+  function setVB(p, fast) {
     p._svg.classList.toggle('zoomed', isZoomed(p));
+    // fast: only for large clouds, in the window-fitting layout (whose area clips)
+    if (!fast || !p._big || !document.body.classList.contains('wc-fit')) { commitVB(p); return; }
+    if (!p._cvb) {
+      var a = (p._svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+      p._cvb = a.length === 4 && a.every(isFinite) ? a : p._vb.slice();
+      var r = p._svg.getBoundingClientRect();
+      p._base = { left: r.left, top: r.top, width: r.width, height: r.height };
+      p._svg.style.transformOrigin = '0 0';
+      p._svg.style.willChange = 'transform';
+    }
+    var C = p._cvb, V = p._vb, s = C[2] / V[2];
+    var tx = (C[0] - V[0]) / V[2] * p._base.width, ty = (C[1] - V[1]) / V[3] * p._base.height;
+    p._svg.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
+    if (p._ct) clearTimeout(p._ct);
+    p._ct = setTimeout(function () { commitVB(p); }, 300);
   }
   // keep the cloud in view: along a direction where the view is wider than the
   // cloud, the cloud stays centred; otherwise the view stays inside the cloud
-  function clampVB(p, x, y, w, h) {
+  function clampVB(p, x, y, w, h, fast) {
     x = w >= p._W ? (p._W - w) / 2 : Math.min(Math.max(0, x), p._W - w);
     y = h >= p._H ? (p._H - h) / 2 : Math.min(Math.max(0, y), p._H - h);
     p._vb = [x, y, w, h];
-    setVB(p);
+    setVB(p, fast);
   }
-  function zoomAt(p, cx, cy, k) {
+  function zoomAt(p, cx, cy, k, fast) {
     var v = p._vb, r = p._rv;
     var w = Math.min(r[2], Math.max(r[2] / 10, v[2] * k)), h = w * r[3] / r[2];
-    clampVB(p, cx - (cx - v[0]) * (w / v[2]), cy - (cy - v[1]) * (h / v[3]), w, h);
+    clampVB(p, cx - (cx - v[0]) * (w / v[2]), cy - (cy - v[1]) * (h / v[3]), w, h, fast);
   }
   function zoomCentre(k) { var p = pane(), v = p._vb; zoomAt(p, v[0] + v[2] / 2, v[1] + v[3] / 2, k); }
   function zoomReset() { var p = pane(); p._vb = p._rv.slice(); setVB(p); }
   function svgPoint(p, ev) {
-    var r = p._svg.getBoundingClientRect(), v = p._vb;
+    // the picture on screen shows the drawn view (p._cvb while moving fast)
+    var r = p._svg.getBoundingClientRect(), v = p._cvb || p._vb;
     return [v[0] + (ev.clientX - r.left) / r.width * v[2], v[1] + (ev.clientY - r.top) / r.height * v[3]];
   }
   function setupPointer(p) {
@@ -793,7 +863,7 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
     svg.addEventListener('wheel', function (ev) {
       ev.preventDefault();
       var pt = svgPoint(p, ev);
-      zoomAt(p, pt[0], pt[1], ev.deltaY < 0 ? 1 / 1.2 : 1.2);
+      zoomAt(p, pt[0], pt[1], ev.deltaY < 0 ? 1 / 1.2 : 1.2, true);
     }, { passive: false });
     svg.addEventListener('pointerdown', function (ev) {
       drag = { x: ev.clientX, y: ev.clientY, vb: p._vb.slice(), moved: false, target: wordOf(ev.target) };
@@ -804,8 +874,8 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
       var dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
       if (drag.moved && isZoomed(p)) {
-        var r = svg.getBoundingClientRect();
-        clampVB(p, drag.vb[0] - dx / r.width * drag.vb[2], drag.vb[1] - dy / r.height * drag.vb[3], drag.vb[2], drag.vb[3]);
+        var r = p._cvb ? p._base : svg.getBoundingClientRect();
+        clampVB(p, drag.vb[0] - dx / r.width * drag.vb[2], drag.vb[1] - dy / r.height * drag.vb[3], drag.vb[2], drag.vb[3], true);
         svg.classList.add('dragging');
       }
     });
@@ -819,6 +889,7 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
       }
       drag = null;
       svg.classList.remove('dragging');
+      if (p._cvb) commitVB(p);
     });
   }
 
